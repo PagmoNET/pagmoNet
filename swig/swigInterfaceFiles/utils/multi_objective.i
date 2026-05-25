@@ -27,7 +27,7 @@
 %include <std_string.i>
 %include <stdint.i>
 
-%include "pagmoWrapper/multi_objective.h"
+%include "multi_objective.h"
 
 namespace pagmo {
 // Pareto-dominance

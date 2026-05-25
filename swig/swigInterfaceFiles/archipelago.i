@@ -24,13 +24,13 @@
 %typemap(csclassmodifiers) archipelago "public partial class"
 
 // SWIG parses only the facade.
-%include "pagmoWrapper/archipelago_swig.h"
+%include "archipelago_swig.h"
 
 // We return std::vector<...> in extensions.
 %include "std_vector.i"
 
 // Adapter structs for IndividualsGroup and MigrationEntry.
-%include "pagmoWrapper/tuple_adapters.h"
+%include "tuple_adapters.h"
 
 // ------------------------------------------------------------
 // IMPORTANT: We do NOT declare class pagmo::archipelago here.

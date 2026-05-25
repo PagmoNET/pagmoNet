@@ -119,14 +119,14 @@ PAGMO_EXEC_EXCEPTION(pagmo::thread_island::run_evolve, "thread_island.run_evolve
 %}
 
 // ── Log-projection struct includes ───────────────────────────────────────────
-%include "pagmoWrapper/tuple_adapters.h"
-%include "pagmoWrapper/algorithm_log_projections_more.h"
-%include "pagmoWrapper/cmaes_log_projection.h"
-%include "pagmoWrapper/cstrs_log_projection.h"
-%include "pagmoWrapper/de_log_projection.h"
-%include "pagmoWrapper/gaco_log_projection.h"
-%include "pagmoWrapper/ihs_log_projection.h"
-%include "pagmoWrapper/mbh_log_projection.h"
+%include "tuple_adapters.h"
+%include "algorithm_log_projections_more.h"
+%include "cmaes_log_projection.h"
+%include "cstrs_log_projection.h"
+%include "de_log_projection.h"
+%include "gaco_log_projection.h"
+%include "ihs_log_projection.h"
+%include "mbh_log_projection.h"
 
 // ── SWIG STL library includes ─────────────────────────────────────────────────
 %include <std_shared_ptr.i>
@@ -178,7 +178,7 @@ PAGMO_EXEC_EXCEPTION(pagmo::thread_island::run_evolve, "thread_island.run_evolve
 %ignore pagmoWrap::managed_problem::managed_problem(std::shared_ptr<problem_callback>);
 %ignore pagmoWrap::managed_problem::managed_problem(std::shared_ptr< problem_callback >);
 %ignore pagmoWrap::managed_problem::managed_problem(std::shared_ptr< pagmoWrap::problem_callback >);
-%include "pagmoWrapper/problem.h"
+%include "problem.h"
 
 %ignore pagmoWrap::managed_algorithm::managed_algorithm(std::shared_ptr<pagmoWrap::algorithm_callback>);
 %ignore pagmoWrap::managed_algorithm::managed_algorithm(std::shared_ptr<algorithm_callback>);
@@ -199,7 +199,7 @@ PAGMO_EXEC_EXCEPTION(pagmo::thread_island::run_evolve, "thread_island.run_evolve
     // algorithm_callback.h is included later (after population.i) so SWIG knows
     // pagmo::population when generating the director's evolve() signature.
 #else
-    %include "pagmoWrapper/algorithm_callback.h"
+    %include "algorithm_callback.h"
     %shared_ptr(pagmoWrap::problem_callback);
     %shared_ptr(pagmoWrap::algorithm_callback);
 #endif
@@ -210,13 +210,13 @@ PAGMO_EXEC_EXCEPTION(pagmo::thread_island::run_evolve, "thread_island.run_evolve
 // RPolicyCallback::replace() which takes the SWIG-friendly IndividualsGroup struct.
 %ignore pagmoWrap::managed_r_policy::replace;
 %ignore pagmoWrap::managed_r_policy::operator=;
-%include "pagmoWrapper/r_policy.h"
+%include "r_policy.h"
 
 %feature("director") pagmoWrap::s_policy_callback;
 // Same rationale as ManagedRPolicy::replace above.
 %ignore pagmoWrap::managed_s_policy::select;
 %ignore pagmoWrap::managed_s_policy::operator=;
-%include "pagmoWrapper/s_policy.h"
+%include "s_policy.h"
 
 // ── STL template instantiations ───────────────────────────────────────────────
 // Each template must be instantiated exactly once across all included files.

@@ -21,7 +21,7 @@
 %typemap(csclassmodifiers) island "public partial class"
 
 // SWIG parses and wraps the facade.
-%include "pagmoWrapper/island_swig.h"
+%include "island_swig.h"
 
 // We use std::size_t in factory signatures.
 %include "stdint.i"

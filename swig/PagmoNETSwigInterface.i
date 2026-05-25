@@ -104,7 +104,7 @@
 // heap-allocated native objects as void*; without this they become SWIGTYPE_p_void.
 %apply void *VOID_INT_PTR { void * }
 
-%include "pagmoWrapper/multi_objective.h"
+%include "multi_objective.h"
 
 // ── Sub-module includes ───────────────────────────────────────────────────────
 %include swigInterfaceFiles/island.i

@@ -1,4 +1,4 @@
-/* Pagmo4jSwigInterface.i — SWIG module for the Java/Kotlin pagmo4j bindings.
+/* Pagmo4jSwigInterface.i — SWIG module for the Java/Kotlin pagmonet4j bindings.
  *
  * Key differences from PagmoNETSwigInterface.i:
  *   - Uses -java SWIG backend instead of -csharp
@@ -9,14 +9,14 @@
  *   - archipelago and island managed-problem injection done via %typemap(javacode)
  */
 
-// The generated JNI class will be named "pagmo4jJNI" (module name + "JNI").
-%module(naturalvar=1, directors="1") pagmo4j
+// The generated JNI class will be named "pagmonet4jJNI" (module name + "JNI").
+%module(naturalvar=1, directors="1") pagmonet4j
 
-// Inject the native library loader into pagmo4jJNI so the library is loaded
+// Inject the native library loader into pagmonet4jJNI so the library is loaded
 // before any JNI method is called.
 %pragma(java) jniclasscode=%{
   static {
-    io.github.samthegliderpilot.pagmo4j.NativeLoader.load();
+    io.github.samthegliderpilot.pagmonet4j.NativeLoader.load();
   }
 %}
 
@@ -57,7 +57,7 @@ namespace pagmo {
 
 // ── Extern-C bridge functions (pagmonet_*) ────────────────────────────────────
 // Declared here so SWIG generates JNI wrappers callable as static methods on the
-// pagmo4j module class.  In the Java backend, void* maps to long (jlong) automatically.
+// pagmonet4j module class.  In the Java backend, void* maps to long (jlong) automatically.
 %typemap(jtype)   void * "long"
 %typemap(jstype)  void * "long"
 %typemap(javain)  void * "$javainput"
@@ -103,66 +103,66 @@ extern void* pagmonet_estimate_sparsity_problem(void* problemPtr, void* xPtr, do
 %typemap(javainterfaces) pagmo::free_form          "AutoCloseable"
 
 // ── IAlgorithm implementations ────────────────────────────────────────────────
-%typemap(javainterfaces) pagmo::de                 "io.github.samthegliderpilot.pagmo4j.algorithms.IAlgorithm, AutoCloseable"
-%typemap(javainterfaces) pagmo::de1220             "io.github.samthegliderpilot.pagmo4j.algorithms.IAlgorithm, AutoCloseable"
-%typemap(javainterfaces) pagmo::pso                "io.github.samthegliderpilot.pagmo4j.algorithms.IAlgorithm, AutoCloseable"
-%typemap(javainterfaces) pagmo::pso_gen            "io.github.samthegliderpilot.pagmo4j.algorithms.IAlgorithm, AutoCloseable"
-%typemap(javainterfaces) pagmo::sade               "io.github.samthegliderpilot.pagmo4j.algorithms.IAlgorithm, AutoCloseable"
-%typemap(javainterfaces) pagmo::bee_colony         "io.github.samthegliderpilot.pagmo4j.algorithms.IAlgorithm, AutoCloseable"
-%typemap(javainterfaces) pagmo::cmaes              "io.github.samthegliderpilot.pagmo4j.algorithms.IAlgorithm, AutoCloseable"
-%typemap(javainterfaces) pagmo::compass_search     "io.github.samthegliderpilot.pagmo4j.algorithms.IAlgorithm, AutoCloseable"
-%typemap(javainterfaces) pagmo::cstrs_self_adaptive "io.github.samthegliderpilot.pagmo4j.algorithms.IAlgorithm, AutoCloseable"
-%typemap(javainterfaces) pagmo::gaco               "io.github.samthegliderpilot.pagmo4j.algorithms.IAlgorithm, AutoCloseable"
-%typemap(javainterfaces) pagmo::gwo                "io.github.samthegliderpilot.pagmo4j.algorithms.IAlgorithm, AutoCloseable"
-%typemap(javainterfaces) pagmo::ihs                "io.github.samthegliderpilot.pagmo4j.algorithms.IAlgorithm, AutoCloseable"
-%typemap(javainterfaces) pagmo::maco               "io.github.samthegliderpilot.pagmo4j.algorithms.IAlgorithm, AutoCloseable"
-%typemap(javainterfaces) pagmo::mbh                "io.github.samthegliderpilot.pagmo4j.algorithms.IAlgorithm, AutoCloseable"
-%typemap(javainterfaces) pagmo::moead              "io.github.samthegliderpilot.pagmo4j.algorithms.IAlgorithm, AutoCloseable"
-%typemap(javainterfaces) pagmo::moead_gen          "io.github.samthegliderpilot.pagmo4j.algorithms.IAlgorithm, AutoCloseable"
-%typemap(javainterfaces) pagmo::nsga2              "io.github.samthegliderpilot.pagmo4j.algorithms.IAlgorithm, AutoCloseable"
-%typemap(javainterfaces) pagmo::nspso              "io.github.samthegliderpilot.pagmo4j.algorithms.IAlgorithm, AutoCloseable"
-%typemap(javainterfaces) pagmo::null_algorithm     "io.github.samthegliderpilot.pagmo4j.algorithms.IAlgorithm, AutoCloseable"
-%typemap(javainterfaces) pagmo::sea                "io.github.samthegliderpilot.pagmo4j.algorithms.IAlgorithm, AutoCloseable"
-%typemap(javainterfaces) pagmo::sga                "io.github.samthegliderpilot.pagmo4j.algorithms.IAlgorithm, AutoCloseable"
-%typemap(javainterfaces) pagmo::simulated_annealing "io.github.samthegliderpilot.pagmo4j.algorithms.IAlgorithm, AutoCloseable"
-%typemap(javainterfaces) pagmo::xnes               "io.github.samthegliderpilot.pagmo4j.algorithms.IAlgorithm, AutoCloseable"
-%typemap(javainterfaces) pagmo::nlopt              "io.github.samthegliderpilot.pagmo4j.algorithms.IAlgorithm, AutoCloseable"
-%typemap(javainterfaces) pagmo::ipopt              "io.github.samthegliderpilot.pagmo4j.algorithms.IAlgorithm, AutoCloseable"
+%typemap(javainterfaces) pagmo::de                 "io.github.samthegliderpilot.pagmonet4j.algorithms.IAlgorithm, AutoCloseable"
+%typemap(javainterfaces) pagmo::de1220             "io.github.samthegliderpilot.pagmonet4j.algorithms.IAlgorithm, AutoCloseable"
+%typemap(javainterfaces) pagmo::pso                "io.github.samthegliderpilot.pagmonet4j.algorithms.IAlgorithm, AutoCloseable"
+%typemap(javainterfaces) pagmo::pso_gen            "io.github.samthegliderpilot.pagmonet4j.algorithms.IAlgorithm, AutoCloseable"
+%typemap(javainterfaces) pagmo::sade               "io.github.samthegliderpilot.pagmonet4j.algorithms.IAlgorithm, AutoCloseable"
+%typemap(javainterfaces) pagmo::bee_colony         "io.github.samthegliderpilot.pagmonet4j.algorithms.IAlgorithm, AutoCloseable"
+%typemap(javainterfaces) pagmo::cmaes              "io.github.samthegliderpilot.pagmonet4j.algorithms.IAlgorithm, AutoCloseable"
+%typemap(javainterfaces) pagmo::compass_search     "io.github.samthegliderpilot.pagmonet4j.algorithms.IAlgorithm, AutoCloseable"
+%typemap(javainterfaces) pagmo::cstrs_self_adaptive "io.github.samthegliderpilot.pagmonet4j.algorithms.IAlgorithm, AutoCloseable"
+%typemap(javainterfaces) pagmo::gaco               "io.github.samthegliderpilot.pagmonet4j.algorithms.IAlgorithm, AutoCloseable"
+%typemap(javainterfaces) pagmo::gwo                "io.github.samthegliderpilot.pagmonet4j.algorithms.IAlgorithm, AutoCloseable"
+%typemap(javainterfaces) pagmo::ihs                "io.github.samthegliderpilot.pagmonet4j.algorithms.IAlgorithm, AutoCloseable"
+%typemap(javainterfaces) pagmo::maco               "io.github.samthegliderpilot.pagmonet4j.algorithms.IAlgorithm, AutoCloseable"
+%typemap(javainterfaces) pagmo::mbh                "io.github.samthegliderpilot.pagmonet4j.algorithms.IAlgorithm, AutoCloseable"
+%typemap(javainterfaces) pagmo::moead              "io.github.samthegliderpilot.pagmonet4j.algorithms.IAlgorithm, AutoCloseable"
+%typemap(javainterfaces) pagmo::moead_gen          "io.github.samthegliderpilot.pagmonet4j.algorithms.IAlgorithm, AutoCloseable"
+%typemap(javainterfaces) pagmo::nsga2              "io.github.samthegliderpilot.pagmonet4j.algorithms.IAlgorithm, AutoCloseable"
+%typemap(javainterfaces) pagmo::nspso              "io.github.samthegliderpilot.pagmonet4j.algorithms.IAlgorithm, AutoCloseable"
+%typemap(javainterfaces) pagmo::null_algorithm     "io.github.samthegliderpilot.pagmonet4j.algorithms.IAlgorithm, AutoCloseable"
+%typemap(javainterfaces) pagmo::sea                "io.github.samthegliderpilot.pagmonet4j.algorithms.IAlgorithm, AutoCloseable"
+%typemap(javainterfaces) pagmo::sga                "io.github.samthegliderpilot.pagmonet4j.algorithms.IAlgorithm, AutoCloseable"
+%typemap(javainterfaces) pagmo::simulated_annealing "io.github.samthegliderpilot.pagmonet4j.algorithms.IAlgorithm, AutoCloseable"
+%typemap(javainterfaces) pagmo::xnes               "io.github.samthegliderpilot.pagmonet4j.algorithms.IAlgorithm, AutoCloseable"
+%typemap(javainterfaces) pagmo::nlopt              "io.github.samthegliderpilot.pagmonet4j.algorithms.IAlgorithm, AutoCloseable"
+%typemap(javainterfaces) pagmo::ipopt              "io.github.samthegliderpilot.pagmonet4j.algorithms.IAlgorithm, AutoCloseable"
 
 // ── javaimports: sub-package imports for generated classes ────────────────────
-%typemap(javaimports) pagmo::archipelago      "import io.github.samthegliderpilot.pagmo4j.problems.*; import io.github.samthegliderpilot.pagmo4j.algorithms.*; import io.github.samthegliderpilot.pagmo4j.batchevaluators.*; import io.github.samthegliderpilot.pagmo4j.migration.*;"
-%typemap(javaimports) pagmo::island           "import io.github.samthegliderpilot.pagmo4j.problems.*; import io.github.samthegliderpilot.pagmo4j.algorithms.*; import io.github.samthegliderpilot.pagmo4j.batchevaluators.*;"
-%typemap(javaimports) pagmo::algorithm        "import io.github.samthegliderpilot.pagmo4j.problems.*; import io.github.samthegliderpilot.pagmo4j.algorithms.*; import io.github.samthegliderpilot.pagmo4j.batchevaluators.*;"
-%typemap(javaimports) pagmo::problem          "import io.github.samthegliderpilot.pagmo4j.problems.*;"
-%typemap(javaimports) pagmo::population       "import io.github.samthegliderpilot.pagmo4j.problems.*;"
-%typemap(javaimports) pagmo::default_bfe      "import io.github.samthegliderpilot.pagmo4j.batchevaluators.*; import io.github.samthegliderpilot.pagmo4j.problems.*;"
-%typemap(javaimports) pagmo::thread_bfe       "import io.github.samthegliderpilot.pagmo4j.batchevaluators.*; import io.github.samthegliderpilot.pagmo4j.problems.*;"
-%typemap(javaimports) pagmo::member_bfe       "import io.github.samthegliderpilot.pagmo4j.batchevaluators.*; import io.github.samthegliderpilot.pagmo4j.problems.*;"
-%typemap(javaimports) pagmo::de               "import io.github.samthegliderpilot.pagmo4j.algorithms.*;"
-%typemap(javaimports) pagmo::pso              "import io.github.samthegliderpilot.pagmo4j.algorithms.*;"
-%typemap(javaimports) pagmo::cmaes            "import io.github.samthegliderpilot.pagmo4j.algorithms.*;"
-%typemap(javaimports) pagmo::simulated_annealing "import io.github.samthegliderpilot.pagmo4j.algorithms.*;"
-%typemap(javaimports) pagmo::compass_search   "import io.github.samthegliderpilot.pagmo4j.algorithms.*;"
-%typemap(javaimports) pagmo::ihs              "import io.github.samthegliderpilot.pagmo4j.algorithms.*;"
-%typemap(javaimports) pagmo::mbh              "import io.github.samthegliderpilot.pagmo4j.algorithms.*;"
-%typemap(javaimports) pagmo::sade             "import io.github.samthegliderpilot.pagmo4j.algorithms.*;"
-%typemap(javaimports) pagmo::bee_colony       "import io.github.samthegliderpilot.pagmo4j.algorithms.*;"
-%typemap(javaimports) pagmo::cstrs_self_adaptive "import io.github.samthegliderpilot.pagmo4j.algorithms.*;"
-%typemap(javaimports) pagmo::de1220           "import io.github.samthegliderpilot.pagmo4j.algorithms.*;"
-%typemap(javaimports) pagmo::gaco             "import io.github.samthegliderpilot.pagmo4j.algorithms.*;"
-%typemap(javaimports) pagmo::gwo              "import io.github.samthegliderpilot.pagmo4j.algorithms.*;"
-%typemap(javaimports) pagmo::maco             "import io.github.samthegliderpilot.pagmo4j.algorithms.*;"
-%typemap(javaimports) pagmo::moead            "import io.github.samthegliderpilot.pagmo4j.algorithms.*;"
-%typemap(javaimports) pagmo::moead_gen        "import io.github.samthegliderpilot.pagmo4j.algorithms.*;"
-%typemap(javaimports) pagmo::nsga2            "import io.github.samthegliderpilot.pagmo4j.algorithms.*;"
-%typemap(javaimports) pagmo::nspso            "import io.github.samthegliderpilot.pagmo4j.algorithms.*;"
-%typemap(javaimports) pagmo::null_algorithm   "import io.github.samthegliderpilot.pagmo4j.algorithms.*;"
-%typemap(javaimports) pagmo::pso_gen          "import io.github.samthegliderpilot.pagmo4j.algorithms.*;"
-%typemap(javaimports) pagmo::sea              "import io.github.samthegliderpilot.pagmo4j.algorithms.*;"
-%typemap(javaimports) pagmo::sga              "import io.github.samthegliderpilot.pagmo4j.algorithms.*;"
-%typemap(javaimports) pagmo::xnes             "import io.github.samthegliderpilot.pagmo4j.algorithms.*;"
-%typemap(javaimports) pagmo::nlopt            "import io.github.samthegliderpilot.pagmo4j.algorithms.*;"
-%typemap(javaimports) pagmo::ipopt            "import io.github.samthegliderpilot.pagmo4j.algorithms.*;"
+%typemap(javaimports) pagmo::archipelago      "import io.github.samthegliderpilot.pagmonet4j.problems.*; import io.github.samthegliderpilot.pagmonet4j.algorithms.*; import io.github.samthegliderpilot.pagmonet4j.batchevaluators.*; import io.github.samthegliderpilot.pagmonet4j.migration.*;"
+%typemap(javaimports) pagmo::island           "import io.github.samthegliderpilot.pagmonet4j.problems.*; import io.github.samthegliderpilot.pagmonet4j.algorithms.*; import io.github.samthegliderpilot.pagmonet4j.batchevaluators.*;"
+%typemap(javaimports) pagmo::algorithm        "import io.github.samthegliderpilot.pagmonet4j.problems.*; import io.github.samthegliderpilot.pagmonet4j.algorithms.*; import io.github.samthegliderpilot.pagmonet4j.batchevaluators.*;"
+%typemap(javaimports) pagmo::problem          "import io.github.samthegliderpilot.pagmonet4j.problems.*;"
+%typemap(javaimports) pagmo::population       "import io.github.samthegliderpilot.pagmonet4j.problems.*;"
+%typemap(javaimports) pagmo::default_bfe      "import io.github.samthegliderpilot.pagmonet4j.batchevaluators.*; import io.github.samthegliderpilot.pagmonet4j.problems.*;"
+%typemap(javaimports) pagmo::thread_bfe       "import io.github.samthegliderpilot.pagmonet4j.batchevaluators.*; import io.github.samthegliderpilot.pagmonet4j.problems.*;"
+%typemap(javaimports) pagmo::member_bfe       "import io.github.samthegliderpilot.pagmonet4j.batchevaluators.*; import io.github.samthegliderpilot.pagmonet4j.problems.*;"
+%typemap(javaimports) pagmo::de               "import io.github.samthegliderpilot.pagmonet4j.algorithms.*;"
+%typemap(javaimports) pagmo::pso              "import io.github.samthegliderpilot.pagmonet4j.algorithms.*;"
+%typemap(javaimports) pagmo::cmaes            "import io.github.samthegliderpilot.pagmonet4j.algorithms.*;"
+%typemap(javaimports) pagmo::simulated_annealing "import io.github.samthegliderpilot.pagmonet4j.algorithms.*;"
+%typemap(javaimports) pagmo::compass_search   "import io.github.samthegliderpilot.pagmonet4j.algorithms.*;"
+%typemap(javaimports) pagmo::ihs              "import io.github.samthegliderpilot.pagmonet4j.algorithms.*;"
+%typemap(javaimports) pagmo::mbh              "import io.github.samthegliderpilot.pagmonet4j.algorithms.*;"
+%typemap(javaimports) pagmo::sade             "import io.github.samthegliderpilot.pagmonet4j.algorithms.*;"
+%typemap(javaimports) pagmo::bee_colony       "import io.github.samthegliderpilot.pagmonet4j.algorithms.*;"
+%typemap(javaimports) pagmo::cstrs_self_adaptive "import io.github.samthegliderpilot.pagmonet4j.algorithms.*;"
+%typemap(javaimports) pagmo::de1220           "import io.github.samthegliderpilot.pagmonet4j.algorithms.*;"
+%typemap(javaimports) pagmo::gaco             "import io.github.samthegliderpilot.pagmonet4j.algorithms.*;"
+%typemap(javaimports) pagmo::gwo              "import io.github.samthegliderpilot.pagmonet4j.algorithms.*;"
+%typemap(javaimports) pagmo::maco             "import io.github.samthegliderpilot.pagmonet4j.algorithms.*;"
+%typemap(javaimports) pagmo::moead            "import io.github.samthegliderpilot.pagmonet4j.algorithms.*;"
+%typemap(javaimports) pagmo::moead_gen        "import io.github.samthegliderpilot.pagmonet4j.algorithms.*;"
+%typemap(javaimports) pagmo::nsga2            "import io.github.samthegliderpilot.pagmonet4j.algorithms.*;"
+%typemap(javaimports) pagmo::nspso            "import io.github.samthegliderpilot.pagmonet4j.algorithms.*;"
+%typemap(javaimports) pagmo::null_algorithm   "import io.github.samthegliderpilot.pagmonet4j.algorithms.*;"
+%typemap(javaimports) pagmo::pso_gen          "import io.github.samthegliderpilot.pagmonet4j.algorithms.*;"
+%typemap(javaimports) pagmo::sea              "import io.github.samthegliderpilot.pagmonet4j.algorithms.*;"
+%typemap(javaimports) pagmo::sga              "import io.github.samthegliderpilot.pagmonet4j.algorithms.*;"
+%typemap(javaimports) pagmo::xnes             "import io.github.samthegliderpilot.pagmonet4j.algorithms.*;"
+%typemap(javaimports) pagmo::nlopt            "import io.github.samthegliderpilot.pagmonet4j.algorithms.*;"
+%typemap(javaimports) pagmo::ipopt            "import io.github.samthegliderpilot.pagmonet4j.algorithms.*;"
 
 // ── Log projection injection ──────────────────────────────────────────────────
 %typemap(javacode) pagmo::bee_colony %{
@@ -453,7 +453,7 @@ PAGMO4J_SIMPLE_ALGO_CODE(ipopt)
 
 // ── sade/sea/sga typed log projections ───────────────────────────────────────
 // Indexed accessors avoid the full std::vector<> JNI wrapper infrastructure.
-// The corresponding JNI functions are hand-written in pagmo4j_wrap.cxx.
+// The corresponding JNI functions are hand-written in pagmonet4j_wrap.cxx.
 %extend pagmo::sade {
     int get_log_entry_count() const { return (int)$self->get_log().size(); }
     pagmoWrap::SadeLogEntry get_log_entry(int idx) const {
@@ -592,7 +592,7 @@ PAGMO4J_SIMPLE_ALGO_CODE(ipopt)
 
     /** Estimates gradient sparsity by finite differencing. */
     public SparsityPattern estimateSparsity(DoubleVector x, double dx) {
-        long ptr = pagmo4j.pagmonet_estimate_sparsity_problem(
+        long ptr = pagmonet4j.pagmonet_estimate_sparsity_problem(
             problem.getCPtr(this), DoubleVector.getCPtr(x), dx);
         if (ptr == 0) throw new RuntimeException("Native estimate_sparsity() failed.");
         return new SparsityPattern(ptr, true);
@@ -600,7 +600,7 @@ PAGMO4J_SIMPLE_ALGO_CODE(ipopt)
 
     /** Estimates gradient by forward finite differencing. */
     public DoubleVector estimateGradient(DoubleVector x, double dx) {
-        long ptr = pagmo4j.pagmonet_estimate_gradient_problem(
+        long ptr = pagmonet4j.pagmonet_estimate_gradient_problem(
             problem.getCPtr(this), DoubleVector.getCPtr(x), dx);
         if (ptr == 0) throw new RuntimeException("Native estimate_gradient() failed.");
         return new DoubleVector(ptr, true);
@@ -608,7 +608,7 @@ PAGMO4J_SIMPLE_ALGO_CODE(ipopt)
 
     /** Estimates gradient by higher-order finite differencing. */
     public DoubleVector estimateGradientHighOrder(DoubleVector x, double dx) {
-        long ptr = pagmo4j.pagmonet_estimate_gradient_h_problem(
+        long ptr = pagmonet4j.pagmonet_estimate_gradient_h_problem(
             problem.getCPtr(this), DoubleVector.getCPtr(x), dx);
         if (ptr == 0) throw new RuntimeException("Native estimate_gradient_h() failed.");
         return new DoubleVector(ptr, true);
@@ -792,11 +792,11 @@ PAGMO4J_SIMPLE_ALGO_CODE(ipopt)
         long problemPtr = NativeInterop.createProblemPointer(problem);
         try {
             // nativePop: SWIG maps C long → Java int on Windows (32-bit C long)
-            long popPtr = pagmo4j.pagmonet_population_new(problemPtr, (int) nativePop, seed);
+            long popPtr = pagmonet4j.pagmonet_population_new(problemPtr, (int) nativePop, seed);
             if (popPtr == 0) throw new RuntimeException("Failed to create native pagmo::population.");
             return popPtr;
         } finally {
-            pagmo4j.pagmonet_problem_delete(problemPtr);
+            pagmonet4j.pagmonet_problem_delete(problemPtr);
         }
     }
 
@@ -840,7 +840,7 @@ namespace pagmo {
 }
 // Now that pagmo::population is known, include algorithm_callback.h so the director
 // generates evolve(population) instead of evolve(SWIGTYPE_p_pagmo__population).
-%include "pagmoWrapper/algorithm_callback.h"
+%include "algorithm_callback.h"
 %include "swigInterfaceFiles/island.i"
 %include "swigInterfaceFiles/archipelago.i"
 namespace pagmo {
@@ -888,8 +888,8 @@ namespace pagmo {
 
 // ── Native problem types implement IProblem ───────────────────────────────────
 %define PAGMO4J_NATIVE_PROBLEM(TYPE)
-%typemap(javaimports)   pagmo::TYPE "import io.github.samthegliderpilot.pagmo4j.problems.*;"
-%typemap(javainterfaces) pagmo::TYPE "io.github.samthegliderpilot.pagmo4j.problems.IProblem, AutoCloseable"
+%typemap(javaimports)   pagmo::TYPE "import io.github.samthegliderpilot.pagmonet4j.problems.*;"
+%typemap(javainterfaces) pagmo::TYPE "io.github.samthegliderpilot.pagmonet4j.problems.IProblem, AutoCloseable"
 %typemap(javacode) pagmo::TYPE %{ @Override public void close() { delete(); } %}
 %enddef
 
