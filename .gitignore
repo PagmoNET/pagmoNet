@@ -1,0 +1,4 @@
+native/win-build/
+native/build/
+native/pagmoWrapper/bin/
+*.user
