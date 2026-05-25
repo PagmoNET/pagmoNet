@@ -1,0 +1,114 @@
+name: Build Native
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bootstrap vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg C:/vcpkg --depth 1
+          C:/vcpkg/bootstrap-vcpkg.bat -disableMetrics
+          echo "VCPKG_ROOT=C:/vcpkg" >> $env:GITHUB_ENV
+        shell: pwsh
+
+      - name: Cache vcpkg installed
+        uses: actions/cache@v4
+        with:
+          path: C:/vcpkg/installed
+          key: vcpkg-windows-${{ hashFiles('ports/**', 'native/CMakeLists.txt') }}
+          restore-keys: vcpkg-windows-
+
+      - name: Build
+        run: |
+          $env:VCPKG_ROOT = "C:/vcpkg"
+          pwsh scripts/build-native.ps1 -Configuration Release
+        shell: pwsh
+
+      - name: Upload DLL
+        uses: actions/upload-artifact@v4
+        with:
+          name: PagmoWrapper-windows-x64
+          path: native/win-build/PagmoWrapper.dll
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential swig curl zip unzip tar \
+            autoconf autoconf-archive automake libtool
+
+      - name: Install PowerShell
+        run: |
+          source /etc/os-release
+          wget -q "https://packages.microsoft.com/config/ubuntu/${VERSION_ID}/packages-microsoft-prod.deb" -O ms-prod.deb
+          sudo dpkg -i ms-prod.deb
+          sudo apt-get update
+          sudo apt-get install -y powershell
+
+      - name: Bootstrap vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg ~/vcpkg --depth 1
+          ~/vcpkg/bootstrap-vcpkg.sh -disableMetrics
+          echo "VCPKG_ROOT=$HOME/vcpkg" >> $GITHUB_ENV
+
+      - name: Cache vcpkg installed
+        uses: actions/cache@v4
+        with:
+          path: ~/vcpkg/installed
+          key: vcpkg-linux-${{ hashFiles('ports/**', 'native/CMakeLists.txt') }}
+          restore-keys: vcpkg-linux-
+
+      - name: Build
+        run: pwsh scripts/build-native.ps1 -Configuration Release
+
+      - name: Upload .so
+        uses: actions/upload-artifact@v4
+        with:
+          name: PagmoWrapper-linux-x64
+          path: native/build/libPagmoWrapper.so
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: brew install autoconf autoconf-archive automake libtool swig
+
+      - name: Bootstrap vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg ~/vcpkg --depth 1
+          ~/vcpkg/bootstrap-vcpkg.sh -disableMetrics
+          echo "VCPKG_ROOT=$HOME/vcpkg" >> $GITHUB_ENV
+
+      - name: Cache vcpkg installed
+        uses: actions/cache@v4
+        with:
+          path: ~/vcpkg/installed
+          key: vcpkg-macos-${{ hashFiles('ports/**', 'native/CMakeLists.txt') }}
+          restore-keys: vcpkg-macos-
+
+      - name: Build
+        run: pwsh scripts/build-native.ps1 -Configuration Release
+
+      - name: Upload .dylib
+        uses: actions/upload-artifact@v4
+        with:
+          name: PagmoWrapper-macos
+          path: native/build/libPagmoWrapper.dylib
