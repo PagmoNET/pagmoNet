@@ -1,4 +1,16 @@
 native/win-build/
 native/build/
+native/bin/
+native/Intermediate/
 native/pagmoWrapper/bin/
+native/pagmoWrapper/Intermediate/
 *.user
+*.dll
+*.lib
+*.exp
+*.pdb
+*.obj
+*.ilk
+*.idb
+*.iobj
+*.ipdb
