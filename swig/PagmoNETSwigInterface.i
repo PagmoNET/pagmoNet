@@ -1,4 +1,4 @@
-/* PagmoNETSwigInterface.i — SWIG module for the C# / .NET pagmoSharp bindings. */
+/* PagmoNETSwigInterface.i — SWIG module for the shared pagmoNet layer (C# bindings). */
 
 %module(naturalvar=1, directors="11") pagmo
 
