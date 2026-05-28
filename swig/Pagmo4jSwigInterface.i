@@ -720,7 +720,12 @@ PAGMO4J_SIMPLE_ALGO_CODE(ipopt)
 
     public void waitCheck() { wait_check(); }
 
-    @Override public void close() { delete(); }
+    @Override public void close() {
+        delete();
+        for (IProblem clone : managedProblemCloneRoots)
+            try { clone.close(); } catch (Exception ignored) {}
+        managedProblemCloneRoots.clear();
+    }
 %}
 
 // ── island: managed-problem factory ──────────────────────────────────────────
@@ -772,7 +777,15 @@ PAGMO4J_SIMPLE_ALGO_CODE(ipopt)
 
     public void waitCheck() { wait_check(); }
 
-    @Override public void close() { delete(); }
+    @Override public void close() {
+        long ptr = island.getCPtr(this);
+        java.util.List<Object> roots = constructionRoots.remove(ptr);
+        delete();
+        if (roots != null)
+            for (Object r : roots)
+                if (r instanceof AutoCloseable)
+                    try { ((AutoCloseable) r).close(); } catch (Exception ignored) {}
+    }
 %}
 
 %typemap(javacode) pagmo::population %{
