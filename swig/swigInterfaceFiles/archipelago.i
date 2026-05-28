@@ -23,6 +23,28 @@
 %typemap(csclassmodifiers) pagmo::archipelago "public partial class"
 %typemap(csclassmodifiers) archipelago "public partial class"
 
+// Custom Dispose(bool) — calls partial void OnManagedDispose() so the extension
+// partial class can clean up managed-side roots without redefining Dispose(bool).
+%typemap(csdispose) pagmo::archipelago %{
+  public void Dispose() {
+    Dispose(true);
+    global::System.GC.SuppressFinalize(this);
+  }
+  protected virtual void Dispose(bool disposing) {
+    lock(this) {
+      if (swigCPtr.Handle != global::System.IntPtr.Zero) {
+        if (swigCMemOwn) {
+          swigCMemOwn = false;
+          $imclassname.delete_archipelago(swigCPtr);
+        }
+        swigCPtr = new global::System.Runtime.InteropServices.HandleRef(null, global::System.IntPtr.Zero);
+      }
+    }
+    if (disposing) OnManagedDispose();
+  }
+  partial void OnManagedDispose();
+%}
+
 // SWIG parses only the facade.
 %include "archipelago_swig.h"
 

@@ -4,6 +4,7 @@ native/bin/
 native/Intermediate/
 native/pagmoWrapper/bin/
 native/pagmoWrapper/Intermediate/
+swig/generated/
 *.user
 *.dll
 *.lib
@@ -14,3 +15,5 @@ native/pagmoWrapper/Intermediate/
 *.idb
 *.iobj
 *.ipdb
+*.so
+*.dylib
