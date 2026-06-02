@@ -9,3 +9,5 @@
 set(VCPKG_TARGET_ARCHITECTURE x64)
 set(VCPKG_CRT_LINKAGE dynamic)
 set(VCPKG_LIBRARY_LINKAGE static)
+# Pin to VS 2022 (v143) toolset so pagmo2 compiles on runners with VS 2026 installed.
+set(VCPKG_PLATFORM_TOOLSET v143)
