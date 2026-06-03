@@ -3,6 +3,7 @@
 #include "pagmo/detail/visibility.hpp"
 #include "pagmo/types.hpp"
 %}
+%shared_ptr(pagmo::hv_algorithm)
 %typemap(csclassmodifiers) pagmo::hv_algorithm "public partial class"
 %ignore pagmo::hv_algorithm::volume_between(double*, double*, pagmo::vector_double::size_type);
 

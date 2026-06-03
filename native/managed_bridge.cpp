@@ -15,6 +15,7 @@
 
 #include "problem.h"
 #include "algorithm_callback.h"
+#include "bfe_callback.h"
 
 #ifndef PAGMONET_EXPORT
   #if defined(_WIN32) || defined(_WIN64)
@@ -131,6 +132,51 @@ PAGMONET_EXPORT void *pagmonet_algorithm_from_callback_java(void *callback_ptr)
         return nullptr;
     } catch (...) {
         set_unknown_last_error("pagmonet_algorithm_from_callback_java");
+        return nullptr;
+    }
+}
+
+// ── BFE (batch fitness evaluator) bridge ────────────────────────────────────
+
+PAGMONET_EXPORT void *pagmonet_bfe_from_callback(void *callback_ptr)
+{
+    clear_last_error();
+    if (callback_ptr == nullptr) {
+        set_last_error("pagmonet_bfe_from_callback: callback_ptr is null");
+        return nullptr;
+    }
+    try {
+        auto *raw = static_cast<pagmoWrap::bfe_callback *>(callback_ptr);
+        std::shared_ptr<pagmoWrap::bfe_callback> owner(raw);
+        auto *bfe = new pagmo::bfe(pagmoWrap::managed_bfe(std::move(owner)));
+        return static_cast<void *>(bfe);
+    } catch (const std::exception &ex) {
+        set_last_error_from_exception("pagmonet_bfe_from_callback", ex);
+        return nullptr;
+    } catch (...) {
+        set_unknown_last_error("pagmonet_bfe_from_callback");
+        return nullptr;
+    }
+}
+
+PAGMONET_EXPORT void *pagmonet_bfe_from_callback_java(void *callback_ptr)
+{
+    clear_last_error();
+    if (callback_ptr == nullptr) {
+        set_last_error("pagmonet_bfe_from_callback_java: callback_ptr is null");
+        return nullptr;
+    }
+    try {
+        auto *sptr = static_cast<std::shared_ptr<pagmoWrap::bfe_callback> *>(callback_ptr);
+        std::shared_ptr<pagmoWrap::bfe_callback> owner = std::move(*sptr);
+        delete sptr;
+        auto *bfe = new pagmo::bfe(pagmoWrap::managed_bfe(std::move(owner)));
+        return static_cast<void *>(bfe);
+    } catch (const std::exception &ex) {
+        set_last_error_from_exception("pagmonet_bfe_from_callback_java", ex);
+        return nullptr;
+    } catch (...) {
+        set_unknown_last_error("pagmonet_bfe_from_callback_java");
         return nullptr;
     }
 }
@@ -327,6 +373,35 @@ PAGMONET_EXPORT void *pagmonet_estimate_sparsity_problem(void *problem_ptr, void
         set_unknown_last_error("pagmonet_estimate_sparsity_problem");
         return nullptr;
     }
+}
+
+// ── Optional-solver availability probes ──────────────────────────────────────
+// These return compile-time flags without constructing any pagmo object,
+// making them safe to call even when the underlying solver library is absent.
+
+#include <jni.h>
+#include <pagmo/config.hpp>
+
+PAGMONET_EXPORT jboolean JNICALL
+Java_io_github_samthegliderpilot_pagmonet4j_pagmonet4jJNI_pagmonet4j_1has_1nlopt_1support(
+    JNIEnv *, jclass)
+{
+#if defined(PAGMO_WITH_NLOPT)
+    return JNI_TRUE;
+#else
+    return JNI_FALSE;
+#endif
+}
+
+PAGMONET_EXPORT jboolean JNICALL
+Java_io_github_samthegliderpilot_pagmonet4j_pagmonet4jJNI_pagmonet4j_1has_1ipopt_1support(
+    JNIEnv *, jclass)
+{
+#if defined(PAGMO_WITH_IPOPT)
+    return JNI_TRUE;
+#else
+    return JNI_FALSE;
+#endif
 }
 
 } // extern "C"

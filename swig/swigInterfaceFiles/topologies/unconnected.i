@@ -15,6 +15,8 @@
 
 class pagmo::unconnected {
 public:
+    extern unconnected();
+
     extern std::pair<std::vector<std::size_t>, pagmo::vector_double> get_connections(std::size_t) const;
 
     extern void push_back();

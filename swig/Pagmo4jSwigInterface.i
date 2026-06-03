@@ -65,6 +65,8 @@ namespace pagmo {
 extern void* pagmonet_problem_from_callback(void* callbackPtr);
 extern void* pagmonet_algorithm_from_callback(void* callbackPtr);
 extern void* pagmonet_algorithm_from_callback_java(void* callbackPtr);
+extern void* pagmonet_bfe_from_callback(void* callbackPtr);
+extern void* pagmonet_bfe_from_callback_java(void* callbackPtr);
 extern void  pagmonet_problem_delete(void* problemPtr);
 extern const char* pagmonet_get_last_error();
 extern void* pagmonet_default_bfe_evaluate(void* problemPtr, void* batchXPtr);
