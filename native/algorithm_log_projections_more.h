@@ -21,7 +21,7 @@
 #if defined(PAGMO_WITH_NLOPT)
 #include "pagmo/algorithms/nlopt.hpp"
 #endif
-#if PAGMO_WITH_IPOPT
+#if defined(PAGMO_WITH_IPOPT)
 #include "pagmo/algorithms/ipopt.hpp"
 #endif
 
