@@ -18,10 +18,10 @@
 #include "pagmo/algorithms/sga.hpp"
 #include "pagmo/algorithms/simulated_annealing.hpp"
 #include "pagmo/algorithms/xnes.hpp"
-#if defined(PAGMO_WITH_NLOPT)
+#if PAGMO_WITH_NLOPT
 #include "pagmo/algorithms/nlopt.hpp"
 #endif
-#if defined(PAGMO_WITH_IPOPT)
+#if PAGMO_WITH_IPOPT
 #include "pagmo/algorithms/ipopt.hpp"
 #endif
 
