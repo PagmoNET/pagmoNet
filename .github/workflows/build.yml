@@ -1,4 +1,4 @@
-name: Build Native
+name: Build and Test
 
 on:
   push:
@@ -27,19 +27,17 @@ jobs:
         uses: actions/cache@v4
         with:
           path: C:/vcpkg/installed
-          key: vcpkg-windows-${{ hashFiles('ports/**', 'native/CMakeLists.txt') }}
-          restore-keys: vcpkg-windows-
+          key: vcpkg-windows-pagmonet-${{ hashFiles('ports/**', 'native/CMakeLists.txt') }}
+          restore-keys: vcpkg-windows-pagmonet-
 
-      - name: Build
-        run: |
-          $env:VCPKG_ROOT = "C:/vcpkg"
-          pwsh scripts/build-native.ps1 -Configuration Release
+      - name: Build native
+        run: pwsh scripts/build-native.ps1 -Configuration Release
         shell: pwsh
 
-      - name: Upload DLL
+      - name: Upload native artifact
         uses: actions/upload-artifact@v4
         with:
-          name: PagmoWrapper-windows-x64
+          name: native-windows
           path: native/win-build/PagmoWrapper.dll
 
   build-linux:
@@ -51,15 +49,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake build-essential swig curl zip unzip tar \
-            autoconf autoconf-archive automake libtool
-
-      - name: Install PowerShell
-        run: |
-          source /etc/os-release
-          wget -q "https://packages.microsoft.com/config/ubuntu/${VERSION_ID}/packages-microsoft-prod.deb" -O ms-prod.deb
-          sudo dpkg -i ms-prod.deb
-          sudo apt-get update
-          sudo apt-get install -y powershell
+            autoconf autoconf-archive automake libtool powershell
 
       - name: Bootstrap vcpkg
         run: |
@@ -71,16 +61,16 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/vcpkg/installed
-          key: vcpkg-linux-${{ hashFiles('ports/**', 'native/CMakeLists.txt') }}
-          restore-keys: vcpkg-linux-
+          key: vcpkg-linux-pagmonet-${{ hashFiles('ports/**', 'native/CMakeLists.txt') }}
+          restore-keys: vcpkg-linux-pagmonet-
 
-      - name: Build
+      - name: Build native
         run: pwsh scripts/build-native.ps1 -Configuration Release
 
-      - name: Upload .so
+      - name: Upload native artifact
         uses: actions/upload-artifact@v4
         with:
-          name: PagmoWrapper-linux-x64
+          name: native-linux
           path: native/build/libPagmoWrapper.so
 
   build-macos:
@@ -89,7 +79,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install build tools
-        run: brew install autoconf autoconf-archive automake libtool swig
+        run: brew install autoconf autoconf-archive automake libtool swig powershell
 
       - name: Bootstrap vcpkg
         run: |
@@ -101,14 +91,14 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/vcpkg/installed
-          key: vcpkg-macos-${{ hashFiles('ports/**', 'native/CMakeLists.txt') }}
-          restore-keys: vcpkg-macos-
+          key: vcpkg-macos-pagmonet-${{ hashFiles('ports/**', 'native/CMakeLists.txt') }}
+          restore-keys: vcpkg-macos-pagmonet-
 
-      - name: Build
+      - name: Build native (arm64)
         run: pwsh scripts/build-native.ps1 -Configuration Release
 
-      - name: Upload .dylib
+      - name: Upload native artifact
         uses: actions/upload-artifact@v4
         with:
-          name: PagmoWrapper-macos
+          name: native-macos
           path: native/build/libPagmoWrapper.dylib
