@@ -16,6 +16,16 @@ vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
         nlopt PAGMO_WITH_NLOPT
         ipopt PAGMO_WITH_IPOPT
 )
+
+# When IPOPT is not a requested feature, disable find_package(IPOPT) entirely so
+# that pagmo2's cmake cannot auto-detect a system IPOPT installation and bake
+# PAGMO_WITH_IPOPT into config.hpp.  Without this guard, system IPOPT (common on
+# Linux/macOS runners) causes config.hpp to declare PAGMO_WITH_IPOPT while the
+# actual IPOPT symbols are absent from the static pagmo library.
+if(NOT "ipopt" IN_LIST FEATURES)
+    list(APPEND FEATURE_OPTIONS -DCMAKE_DISABLE_FIND_PACKAGE_IPOPT=ON)
+endif()
+
 string(COMPARE EQUAL "${VCPKG_LIBRARY_LINKAGE}" "static" PAGMO_BUILD_STATIC_LIBRARY)
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
