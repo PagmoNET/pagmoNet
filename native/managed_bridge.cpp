@@ -400,7 +400,7 @@ PAGMONET_EXPORT jboolean JNICALL
 Java_io_github_samthegliderpilot_pagmonet4j_pagmonet4jJNI_pagmonet4j_1has_1ipopt_1support(
     JNIEnv *, jclass)
 {
-#if defined(PAGMO_WITH_IPOPT)
+#if defined(PAGMONET4J_WITH_IPOPT)
     return JNI_TRUE;
 #else
     return JNI_FALSE;

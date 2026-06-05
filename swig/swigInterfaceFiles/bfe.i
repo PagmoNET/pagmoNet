@@ -23,6 +23,9 @@ public:
     virtual std::string consume_deferred_exception();
 };
 
+// The bfe_callback* constructor is internal — users go through pagmonet_bfe_from_callback_java.
+%ignore pagmoWrap::managed_bfe::managed_bfe(pagmoWrap::bfe_callback *);
+
 class pagmoWrap::managed_bfe {
 public:
     managed_bfe();
