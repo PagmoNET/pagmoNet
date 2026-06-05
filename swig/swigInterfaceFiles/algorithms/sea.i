@@ -23,9 +23,9 @@ public:
 };
 
 %extend sea {
-    std::vector<pagmoWrap::SeaLogEntry> get_log_entries() const
+    std::vector < ::pagmoWrap::SeaLogEntry> get_log_entries() const
     {
-        return pagmoWrap::Sea_GetLogEntries(*self);
+        return ::pagmoWrap::Sea_GetLogEntries(*self);
     }
 
     pagmo::algorithm to_algorithm() const

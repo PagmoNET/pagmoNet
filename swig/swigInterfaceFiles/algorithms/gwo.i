@@ -25,9 +25,9 @@ public:
 };
 
 %extend gwo {
-    std::vector<pagmoWrap::GwoLogEntry> get_log_entries() const
+    std::vector < ::pagmoWrap::GwoLogEntry> get_log_entries() const
     {
-        return pagmoWrap::Gwo_GetLogEntries(*self);
+        return ::pagmoWrap::Gwo_GetLogEntries(*self);
     }
 
     pagmo::algorithm to_algorithm() const

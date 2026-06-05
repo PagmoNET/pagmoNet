@@ -5,7 +5,7 @@
 %typemap(csclassmodifiers) pagmo::bfe "public partial class"
 %typemap(csclassmodifiers) pagmoWrap::bfe_callback "public partial class"
 
-class bfe {
+class pagmo::bfe {
     virtual std::string get_name() const = 0;
 };
 
@@ -22,6 +22,9 @@ public:
     virtual pagmo::thread_safety get_thread_safety() const;
     virtual std::string consume_deferred_exception();
 };
+
+// The bfe_callback* constructor is internal — users go through pagmonet_bfe_from_callback_java.
+%ignore pagmoWrap::managed_bfe::managed_bfe(pagmoWrap::bfe_callback *);
 
 class pagmoWrap::managed_bfe {
 public:

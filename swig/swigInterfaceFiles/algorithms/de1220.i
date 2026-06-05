@@ -29,9 +29,9 @@ public:
 };
 
 %extend de1220 {
-    std::vector<pagmoWrap::De1220LogEntry> get_log_entries() const
+    std::vector < ::pagmoWrap::De1220LogEntry> get_log_entries() const
     {
-        return pagmoWrap::De1220_GetLogEntries(*self);
+        return ::pagmoWrap::De1220_GetLogEntries(*self);
     }
 
     pagmo::algorithm to_algorithm() const

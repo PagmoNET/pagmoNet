@@ -56,6 +56,12 @@ PAGMO_EXEC_EXCEPTION(pagmo::thread_island::run_evolve, "thread_island.run_evolve
 
 // ── C++ header includes ───────────────────────────────────────────────────────
 %{
+    // Namespace alias so that pagmoWrap::X is accessible inside namespace pagmo {} blocks.
+    // Needed when SWIG (e.g. 4.3.x) generates SWIGINTERN helper functions inside the
+    // namespace pagmo { } scope rather than at global scope.
+    namespace pagmoWrap {}  // forward-declare so the alias below compiles
+    namespace pagmo { namespace pagmoWrap = ::pagmoWrap; }
+
     #include "pagmo/problem.hpp"
     #include "pagmo/algorithm.hpp"
     #include "pagmo/island.hpp"
@@ -108,6 +114,8 @@ PAGMO_EXEC_EXCEPTION(pagmo::thread_island::run_evolve, "thread_island.run_evolve
     extern "C" void* pagmonet_problem_from_callback(void* callbackPtr);
     extern "C" void* pagmonet_algorithm_from_callback(void* callbackPtr);
     extern "C" void* pagmonet_algorithm_from_callback_java(void* callbackPtr);
+    extern "C" void* pagmonet_bfe_from_callback(void* callbackPtr);
+    extern "C" void* pagmonet_bfe_from_callback_java(void* callbackPtr);
     extern "C" void  pagmonet_problem_delete(void* problemPtr);
     extern "C" const char* pagmonet_get_last_error();
     extern "C" void* pagmonet_default_bfe_evaluate(void* problemPtr, void* batchXPtr);

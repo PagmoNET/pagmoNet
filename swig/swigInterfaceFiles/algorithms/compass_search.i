@@ -30,9 +30,9 @@ public:
 };
 
 %extend compass_search {
-    std::vector<pagmoWrap::CompassSearchLogEntry> get_log_entries() const
+    std::vector < ::pagmoWrap::CompassSearchLogEntry> get_log_entries() const
     {
-        return pagmoWrap::CompassSearch_GetLogEntries(*self);
+        return ::pagmoWrap::CompassSearch_GetLogEntries(*self);
     }
 
     pagmo::algorithm to_algorithm() const

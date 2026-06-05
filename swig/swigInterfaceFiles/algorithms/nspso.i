@@ -30,9 +30,9 @@ public:
 };
 
 %extend nspso {
-    std::vector<pagmoWrap::MoVectorLogEntry> get_log_entries() const
+    std::vector < ::pagmoWrap::MoVectorLogEntry> get_log_entries() const
     {
-        return pagmoWrap::Nspso_GetLogEntries(*self);
+        return ::pagmoWrap::Nspso_GetLogEntries(*self);
     }
 
     pagmo::algorithm to_algorithm() const

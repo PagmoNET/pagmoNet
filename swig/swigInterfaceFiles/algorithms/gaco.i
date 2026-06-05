@@ -29,9 +29,9 @@ public:
 };
 
 %extend gaco {
-    std::vector<pagmoWrap::GacoLogEntry> get_log_entries() const
+    std::vector < ::pagmoWrap::GacoLogEntry> get_log_entries() const
     {
-        return pagmoWrap::Gaco_GetLogEntries(*$self);
+        return ::pagmoWrap::Gaco_GetLogEntries(*$self);
     }
 
     pagmo::algorithm to_algorithm() const
