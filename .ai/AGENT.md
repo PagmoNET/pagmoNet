@@ -34,6 +34,7 @@
   1. Safety-critical corruption/risk prevention.
   2. Meaningful higher-signal error than natural downstream exception.
   3. Intentional boundary validation (config-to-execution threshold crossing).
+  4. Always do the correct thing even if it is harder.  We do not cut corners or disable things because it is simpler, we do things right and do it right the first time.
 - Testing philosophy:
   - Tests should validate wrapper wiring/configuration, not algorithm optimality correctness.
   - For wrapper constructor/factory paths, assert configured inputs are reflected in observable state.
