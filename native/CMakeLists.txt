@@ -18,14 +18,20 @@ set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 # pagmo::IPOPT::libipopt as a transitive link dependency. Pagmo's own config
 # only pre-creates the 'header' component target; we must pre-create
 # 'libipopt' so the export file can resolve it during find_package(Pagmo).
-if(PAGMONET_WITH_IPOPT)
-    find_library(_pagmo_ipopt_lib NAMES ipopt ipopt-3)
-    if(_pagmo_ipopt_lib AND NOT TARGET pagmo::IPOPT::libipopt)
-        add_library(pagmo::IPOPT::libipopt UNKNOWN IMPORTED)
-        set_target_properties(pagmo::IPOPT::libipopt PROPERTIES
-            IMPORTED_LOCATION "${_pagmo_ipopt_lib}")
+if(NOT TARGET pagmo::IPOPT::libipopt)
+    if(PAGMONET_WITH_IPOPT)
+        find_library(_pagmo_ipopt_lib NAMES ipopt ipopt-3)
+        if(_pagmo_ipopt_lib)
+            add_library(pagmo::IPOPT::libipopt UNKNOWN IMPORTED)
+            set_target_properties(pagmo::IPOPT::libipopt PROPERTIES
+                IMPORTED_LOCATION "${_pagmo_ipopt_lib}")
+        else()
+            add_library(pagmo::IPOPT::libipopt INTERFACE IMPORTED)
+        endif()
+        unset(_pagmo_ipopt_lib)
+    else()
+        add_library(pagmo::IPOPT::libipopt INTERFACE IMPORTED)
     endif()
-    unset(_pagmo_ipopt_lib)
 endif()
 
 find_package(Pagmo REQUIRED)
