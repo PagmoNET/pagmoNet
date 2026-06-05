@@ -27,9 +27,9 @@ public:
 };
 
 %extend cmaes {
-    std::vector<pagmoWrap::CmaesLogEntry> get_log_entries() const
+    std::vector < ::pagmoWrap::CmaesLogEntry> get_log_entries() const
     {
-        return pagmoWrap::Cmaes_GetLogEntries(*self);
+        return ::pagmoWrap::Cmaes_GetLogEntries(*self);
     }
 
     pagmo::algorithm to_algorithm() const

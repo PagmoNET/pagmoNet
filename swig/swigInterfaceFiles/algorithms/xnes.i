@@ -27,9 +27,9 @@ public:
 };
 
 %extend xnes {
-    std::vector<pagmoWrap::XnesLogEntry> get_log_entries() const
+    std::vector < ::pagmoWrap::XnesLogEntry> get_log_entries() const
     {
-        return pagmoWrap::Xnes_GetLogEntries(*self);
+        return ::pagmoWrap::Xnes_GetLogEntries(*self);
     }
 
     pagmo::algorithm to_algorithm() const

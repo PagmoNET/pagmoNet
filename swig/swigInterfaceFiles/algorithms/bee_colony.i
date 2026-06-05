@@ -45,9 +45,9 @@ namespace pagmoWrap
 #endif
 %}
 
-// Make std::vector<pagmoWrap::BeeColonyLogLine> available to C#
+// Make std::vector < ::pagmoWrap::BeeColonyLogLine> available to C#
 namespace std {
-    %template(BeeColonyLogLineVector) std::vector<pagmoWrap::BeeColonyLogLine>;
+    %template(BeeColonyLogLineVector) std::vector < ::pagmoWrap::BeeColonyLogLine>;
 }
 
 
@@ -92,11 +92,11 @@ public:
 %extend pagmo::bee_colony {
 
     // Expose the log as a vector of struct lines.
-    std::vector<pagmoWrap::BeeColonyLogLine> get_log_lines() const
+    std::vector < ::pagmoWrap::BeeColonyLogLine> get_log_lines() const
     {
         const auto &log = self->get_log();
 
-        std::vector<pagmoWrap::BeeColonyLogLine> out;
+        std::vector < ::pagmoWrap::BeeColonyLogLine> out;
         out.reserve(log.size());
 
         for (const auto &t : log) {

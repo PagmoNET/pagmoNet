@@ -27,9 +27,9 @@ public:
 };
 
 %extend pso {
-    std::vector<pagmoWrap::PsoLogEntry> get_log_entries() const
+    std::vector < ::pagmoWrap::PsoLogEntry> get_log_entries() const
     {
-        return pagmoWrap::Pso_GetLogEntries(*self);
+        return ::pagmoWrap::Pso_GetLogEntries(*self);
     }
 
     pagmo::algorithm to_algorithm() const

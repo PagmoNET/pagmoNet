@@ -26,9 +26,9 @@ public:
 };
 
 %extend sade {
-    std::vector<pagmoWrap::SadeLogEntry> get_log_entries() const
+    std::vector < ::pagmoWrap::SadeLogEntry> get_log_entries() const
     {
-        return pagmoWrap::Sade_GetLogEntries(*self);
+        return ::pagmoWrap::Sade_GetLogEntries(*self);
     }
 
     pagmo::algorithm to_algorithm() const

@@ -26,9 +26,9 @@ public:
 };
 
 %extend simulated_annealing {
-    std::vector<pagmoWrap::SimulatedAnnealingLogEntry> get_log_entries() const
+    std::vector < ::pagmoWrap::SimulatedAnnealingLogEntry> get_log_entries() const
     {
-        return pagmoWrap::SimulatedAnnealing_GetLogEntries(*self);
+        return ::pagmoWrap::SimulatedAnnealing_GetLogEntries(*self);
     }
 
     pagmo::algorithm to_algorithm() const
