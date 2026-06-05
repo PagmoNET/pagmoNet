@@ -81,7 +81,7 @@
     // Island snapshot access
     // ----------------------------
     pagmo::island get_island_copy(std::size_t idx) const {
-        return pagmoWrap::Archipelago_GetIslandCopy(*self, idx);
+        return ::pagmoWrap::Archipelago_GetIslandCopy(*self, idx);
     }
 
     // ----------------------------
@@ -92,7 +92,7 @@
                                  const pagmo::problem &prob,
                                  std::size_t pop_size,
                                  unsigned seed) {
-        return pagmoWrap::Archipelago_PushBack_AlgoProbSizeSeed(*self, algo, prob, pop_size, seed);
+        return ::pagmoWrap::Archipelago_PushBack_AlgoProbSizeSeed(*self, algo, prob, pop_size, seed);
     }
 
     std::size_t push_back_island(const pagmo::algorithm &algo,
@@ -101,16 +101,16 @@
                                  const pagmo::fair_replace &r,
                                  const pagmo::select_best &s,
                                  unsigned seed) {
-        return pagmoWrap::Archipelago_PushBack_AlgoProbSizeFairSelectSeed(*self, algo, prob, pop_size, r, s, seed);
+        return ::pagmoWrap::Archipelago_PushBack_AlgoProbSizeFairSelectSeed(*self, algo, prob, pop_size, r, s, seed);
     }
 
     std::size_t push_back_island(const pagmo::algorithm &algo,
                                  const pagmo::problem &prob,
                                  std::size_t pop_size,
-                                 const pagmoWrap::managed_r_policy &r,
-                                 const pagmoWrap::managed_s_policy &s,
+                                 const ::pagmoWrap::managed_r_policy &r,
+                                 const ::pagmoWrap::managed_s_policy &s,
                                  unsigned seed) {
-        return pagmoWrap::Archipelago_PushBack_AlgoProbSizeManagedPoliciesSeed(*self, algo, prob, pop_size, r, s, seed);
+        return ::pagmoWrap::Archipelago_PushBack_AlgoProbSizeManagedPoliciesSeed(*self, algo, prob, pop_size, r, s, seed);
     }
 
     std::size_t push_back_island(const pagmo::algorithm &algo,
@@ -118,7 +118,7 @@
                                  const pagmo::bfe &b,
                                  std::size_t pop_size,
                                  unsigned seed) {
-        return pagmoWrap::Archipelago_PushBack_AlgoProbBfeSizeSeed(*self, algo, prob, b, pop_size, seed);
+        return ::pagmoWrap::Archipelago_PushBack_AlgoProbBfeSizeSeed(*self, algo, prob, b, pop_size, seed);
     }
 
     std::size_t push_back_island(const pagmo::algorithm &algo,
@@ -128,17 +128,17 @@
                                  const pagmo::fair_replace &r,
                                  const pagmo::select_best &s,
                                  unsigned seed) {
-        return pagmoWrap::Archipelago_PushBack_AlgoProbBfeSizeFairSelectSeed(*self, algo, prob, b, pop_size, r, s, seed);
+        return ::pagmoWrap::Archipelago_PushBack_AlgoProbBfeSizeFairSelectSeed(*self, algo, prob, b, pop_size, r, s, seed);
     }
 
     std::size_t push_back_island(const pagmo::algorithm &algo,
                                  const pagmo::problem &prob,
                                  const pagmo::bfe &b,
                                  std::size_t pop_size,
-                                 const pagmoWrap::managed_r_policy &r,
-                                 const pagmoWrap::managed_s_policy &s,
+                                 const ::pagmoWrap::managed_r_policy &r,
+                                 const ::pagmoWrap::managed_s_policy &s,
                                  unsigned seed) {
-        return pagmoWrap::Archipelago_PushBack_AlgoProbBfeSizeManagedPoliciesSeed(*self, algo, prob, b, pop_size, r, s, seed);
+        return ::pagmoWrap::Archipelago_PushBack_AlgoProbBfeSizeManagedPoliciesSeed(*self, algo, prob, b, pop_size, r, s, seed);
     }
 
     std::size_t push_back_island(const pagmo::thread_island &isl,
@@ -146,7 +146,7 @@
                                  const pagmo::problem &prob,
                                  std::size_t pop_size,
                                  unsigned seed) {
-        return pagmoWrap::Archipelago_PushBack_ThreadIslAlgoProbSizeSeed(*self, isl, algo, prob, pop_size, seed);
+        return ::pagmoWrap::Archipelago_PushBack_ThreadIslAlgoProbSizeSeed(*self, isl, algo, prob, pop_size, seed);
     }
 
     std::size_t push_back_island(const pagmo::thread_island &isl,
@@ -156,17 +156,17 @@
                                  const pagmo::fair_replace &r,
                                  const pagmo::select_best &s,
                                  unsigned seed) {
-        return pagmoWrap::Archipelago_PushBack_ThreadIslAlgoProbSizeFairSelectSeed(*self, isl, algo, prob, pop_size, r, s, seed);
+        return ::pagmoWrap::Archipelago_PushBack_ThreadIslAlgoProbSizeFairSelectSeed(*self, isl, algo, prob, pop_size, r, s, seed);
     }
 
     std::size_t push_back_island(const pagmo::thread_island &isl,
                                  const pagmo::algorithm &algo,
                                  const pagmo::problem &prob,
                                  std::size_t pop_size,
-                                 const pagmoWrap::managed_r_policy &r,
-                                 const pagmoWrap::managed_s_policy &s,
+                                 const ::pagmoWrap::managed_r_policy &r,
+                                 const ::pagmoWrap::managed_s_policy &s,
                                  unsigned seed) {
-        return pagmoWrap::Archipelago_PushBack_ThreadIslAlgoProbSizeManagedPoliciesSeed(*self, isl, algo, prob, pop_size, r, s, seed);
+        return ::pagmoWrap::Archipelago_PushBack_ThreadIslAlgoProbSizeManagedPoliciesSeed(*self, isl, algo, prob, pop_size, r, s, seed);
     }
 
     std::size_t push_back_island(const pagmo::thread_island &isl,
@@ -175,7 +175,7 @@
                                  const pagmo::bfe &b,
                                  std::size_t pop_size,
                                  unsigned seed) {
-        return pagmoWrap::Archipelago_PushBack_ThreadIslAlgoProbBfeSizeSeed(*self, isl, algo, prob, b, pop_size, seed);
+        return ::pagmoWrap::Archipelago_PushBack_ThreadIslAlgoProbBfeSizeSeed(*self, isl, algo, prob, b, pop_size, seed);
     }
 
     std::size_t push_back_island(const pagmo::thread_island &isl,
@@ -186,7 +186,7 @@
                                  const pagmo::fair_replace &r,
                                  const pagmo::select_best &s,
                                  unsigned seed) {
-        return pagmoWrap::Archipelago_PushBack_ThreadIslAlgoProbBfeSizeFairSelectSeed(*self, isl, algo, prob, b, pop_size, r, s, seed);
+        return ::pagmoWrap::Archipelago_PushBack_ThreadIslAlgoProbBfeSizeFairSelectSeed(*self, isl, algo, prob, b, pop_size, r, s, seed);
     }
 
     std::size_t push_back_island(const pagmo::thread_island &isl,
@@ -194,10 +194,10 @@
                                  const pagmo::problem &prob,
                                  const pagmo::bfe &b,
                                  std::size_t pop_size,
-                                 const pagmoWrap::managed_r_policy &r,
-                                 const pagmoWrap::managed_s_policy &s,
+                                 const ::pagmoWrap::managed_r_policy &r,
+                                 const ::pagmoWrap::managed_s_policy &s,
                                  unsigned seed) {
-        return pagmoWrap::Archipelago_PushBack_ThreadIslAlgoProbBfeSizeManagedPoliciesSeed(*self, isl, algo, prob, b, pop_size, r, s, seed);
+        return ::pagmoWrap::Archipelago_PushBack_ThreadIslAlgoProbBfeSizeManagedPoliciesSeed(*self, isl, algo, prob, b, pop_size, r, s, seed);
     }
 
     
@@ -205,21 +205,21 @@
     // Migrants DB wrapper
     // Expose as vector<IndividualsGroup>
     // ----------------------------
-    std::vector<pagmoWrap::IndividualsGroup> get_migrants_db() const {
+    std::vector < ::pagmoWrap::IndividualsGroup> get_migrants_db() const {
         auto db = self->get_migrants_db();
-        std::vector<pagmoWrap::IndividualsGroup> out;
+        std::vector < ::pagmoWrap::IndividualsGroup> out;
         out.reserve(db.size());
         for (const auto &t : db) {
-            out.push_back(pagmoWrap::FromIndividualsGroupTuple(t));
+            out.push_back(::pagmoWrap::FromIndividualsGroupTuple(t));
         }
         return out;
     }
 
-    void set_migrants_db_items(const std::vector<pagmoWrap::IndividualsGroup> &v) {
+    void set_migrants_db_items(const std::vector < ::pagmoWrap::IndividualsGroup> &v) {
         pagmo::archipelago::migrants_db_t db;
         db.reserve(v.size());
         for (const auto &g : v) {
-            db.push_back(pagmoWrap::ToIndividualsGroupTuple(g));
+            db.push_back(::pagmoWrap::ToIndividualsGroupTuple(g));
         }
         self->set_migrants_db(std::move(db));
     }
@@ -264,12 +264,12 @@
     // Migration log wrapper
     // Expose as vector<MigrationEntry>
     // ----------------------------
-    std::vector<pagmoWrap::MigrationEntry> get_migration_log_entries() const {
+    std::vector < ::pagmoWrap::MigrationEntry> get_migration_log_entries() const {
         auto log = self->get_migration_log();
-        std::vector<pagmoWrap::MigrationEntry> out;
+        std::vector < ::pagmoWrap::MigrationEntry> out;
         out.reserve(log.size());
         for (const auto &t : log) {
-            out.push_back(pagmoWrap::FromMigrationEntryTuple(t));
+            out.push_back(::pagmoWrap::FromMigrationEntryTuple(t));
         }
         return out;
     }

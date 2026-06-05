@@ -12,7 +12,7 @@ public:
 	extern population(T&& x, size_type pop_size = 0u, unsigned seed = pagmo::random_device::next());
 	extern population(const pagmo::problem &prob, size_type pop_size = 0u, unsigned seed = pagmo::random_device::next());
 
-	//extern population(pagmoWrap::problemPagomWrapper x, size_type pop_size = 0u, unsigned seed = pagmo::random_device::next());
+	//extern population(::pagmoWrap::problemPagomWrapper x, size_type pop_size = 0u, unsigned seed = pagmo::random_device::next());
 	extern void push_back(const vector_double&);
 	extern void push_back(const vector_double&, const vector_double&);
 	extern vector_double random_decision_vector() const;

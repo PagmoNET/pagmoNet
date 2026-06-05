@@ -31,9 +31,9 @@ public:
 };
 
 %extend pagmo::mbh {
-    std::vector<pagmoWrap::MbhLogEntry> get_log_entries() const
+    std::vector < ::pagmoWrap::MbhLogEntry> get_log_entries() const
     {
-        return pagmoWrap::Mbh_GetLogEntries(*$self);
+        return ::pagmoWrap::Mbh_GetLogEntries(*$self);
     }
 
     pagmo::algorithm to_algorithm() const

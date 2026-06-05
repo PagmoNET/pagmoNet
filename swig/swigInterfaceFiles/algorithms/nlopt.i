@@ -42,9 +42,9 @@ public:
 };
 
 %extend nlopt {
-    std::vector<pagmoWrap::NloptLogEntry> get_log_entries() const
+    std::vector < ::pagmoWrap::NloptLogEntry> get_log_entries() const
     {
-        return pagmoWrap::Nlopt_GetLogEntries(*self);
+        return ::pagmoWrap::Nlopt_GetLogEntries(*self);
     }
 
     pagmo::algorithm to_algorithm() const

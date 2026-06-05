@@ -129,7 +129,9 @@ extern void* pagmonet_estimate_sparsity_problem(void* problemPtr, void* xPtr, do
 %typemap(javainterfaces) pagmo::simulated_annealing "io.github.samthegliderpilot.pagmonet4j.algorithms.IAlgorithm, AutoCloseable"
 %typemap(javainterfaces) pagmo::xnes               "io.github.samthegliderpilot.pagmonet4j.algorithms.IAlgorithm, AutoCloseable"
 %typemap(javainterfaces) pagmo::nlopt              "io.github.samthegliderpilot.pagmonet4j.algorithms.IAlgorithm, AutoCloseable"
+#ifdef PAGMO_WITH_IPOPT_JNI
 %typemap(javainterfaces) pagmo::ipopt              "io.github.samthegliderpilot.pagmonet4j.algorithms.IAlgorithm, AutoCloseable"
+#endif
 
 // ── javaimports: sub-package imports for generated classes ────────────────────
 %typemap(javaimports) pagmo::archipelago      "import io.github.samthegliderpilot.pagmonet4j.problems.*; import io.github.samthegliderpilot.pagmonet4j.algorithms.*; import io.github.samthegliderpilot.pagmonet4j.batchevaluators.*; import io.github.samthegliderpilot.pagmonet4j.migration.*;"
@@ -164,7 +166,9 @@ extern void* pagmonet_estimate_sparsity_problem(void* problemPtr, void* xPtr, do
 %typemap(javaimports) pagmo::sga              "import io.github.samthegliderpilot.pagmonet4j.algorithms.*;"
 %typemap(javaimports) pagmo::xnes             "import io.github.samthegliderpilot.pagmonet4j.algorithms.*;"
 %typemap(javaimports) pagmo::nlopt            "import io.github.samthegliderpilot.pagmonet4j.algorithms.*;"
+#ifdef PAGMO_WITH_IPOPT_JNI
 %typemap(javaimports) pagmo::ipopt            "import io.github.samthegliderpilot.pagmonet4j.algorithms.*;"
+#endif
 
 // ── Log projection injection ──────────────────────────────────────────────────
 %typemap(javacode) pagmo::bee_colony %{
@@ -451,14 +455,16 @@ PAGMO4J_SIMPLE_ALGO_CODE(null_algorithm)
 PAGMO4J_SIMPLE_ALGO_CODE(pso_gen)
 PAGMO4J_SIMPLE_ALGO_CODE(xnes)
 PAGMO4J_SIMPLE_ALGO_CODE(nlopt)
+#ifdef PAGMO_WITH_IPOPT_JNI
 PAGMO4J_SIMPLE_ALGO_CODE(ipopt)
+#endif
 
 // ── sade/sea/sga typed log projections ───────────────────────────────────────
 // Indexed accessors avoid the full std::vector<> JNI wrapper infrastructure.
 // The corresponding JNI functions are hand-written in pagmonet4j_wrap.cxx.
 %extend pagmo::sade {
     int get_log_entry_count() const { return (int)$self->get_log().size(); }
-    pagmoWrap::SadeLogEntry get_log_entry(int idx) const {
+    ::pagmoWrap::SadeLogEntry get_log_entry(int idx) const {
         const auto& line = $self->get_log().at((std::size_t)idx);
         return {std::get<0>(line), std::get<1>(line), std::get<2>(line),
                 std::get<3>(line), std::get<4>(line), std::get<5>(line), std::get<6>(line)};
@@ -466,7 +472,7 @@ PAGMO4J_SIMPLE_ALGO_CODE(ipopt)
 }
 %extend pagmo::sea {
     int get_log_entry_count() const { return (int)$self->get_log().size(); }
-    pagmoWrap::SeaLogEntry get_log_entry(int idx) const {
+    ::pagmoWrap::SeaLogEntry get_log_entry(int idx) const {
         const auto& line = $self->get_log().at((std::size_t)idx);
         return {std::get<0>(line), std::get<1>(line), std::get<2>(line),
                 std::get<3>(line), static_cast<unsigned long long>(std::get<4>(line))};
@@ -474,7 +480,7 @@ PAGMO4J_SIMPLE_ALGO_CODE(ipopt)
 }
 %extend pagmo::sga {
     int get_log_entry_count() const { return (int)$self->get_log().size(); }
-    pagmoWrap::SgaLogEntry get_log_entry(int idx) const {
+    ::pagmoWrap::SgaLogEntry get_log_entry(int idx) const {
         const auto& line = $self->get_log().at((std::size_t)idx);
         return {std::get<0>(line), std::get<1>(line), std::get<2>(line), std::get<3>(line)};
     }
@@ -858,9 +864,10 @@ namespace pagmo {
 %include "algorithm_callback.h"
 %include "swigInterfaceFiles/island.i"
 %include "swigInterfaceFiles/archipelago.i"
-namespace pagmo {
-    %include "swigInterfaceFiles/bfe.i"
-}
+// bfe.i declares pagmoWrap::bfe_callback and pagmoWrap::managed_bfe.
+// These classes are in the pagmoWrap namespace, NOT in pagmo, so this include
+// must be at global scope (outside namespace pagmo {}).
+%include "swigInterfaceFiles/bfe.i"
 namespace pagmo {
     %include "swigInterfaceFiles/rng.i"
     %include "swigInterfaceFiles/io.i"
@@ -887,7 +894,9 @@ namespace pagmo {
     %include "swigInterfaceFiles/algorithms/de1220.i"
     %include "swigInterfaceFiles/algorithms/gaco.i"
     %include "swigInterfaceFiles/algorithms/gwo.i"
+#ifdef PAGMO_WITH_IPOPT_JNI
     %include "swigInterfaceFiles/algorithms/ipopt.i"
+#endif
     %include "swigInterfaceFiles/algorithms/nlopt.i"
     %include "swigInterfaceFiles/algorithms/not_population_based.i"
     %include "swigInterfaceFiles/algorithms/nspso.i"

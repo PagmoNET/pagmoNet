@@ -27,9 +27,9 @@ public:
 };
 
 %extend snopt7 {
-    std::vector<pagmoWrap::Snopt7LogEntry> get_log_entries() const
+    std::vector < ::pagmoWrap::Snopt7LogEntry> get_log_entries() const
     {
-        return pagmoWrap::Snopt7_GetLogEntries(*self);
+        return ::pagmoWrap::Snopt7_GetLogEntries(*self);
     }
 
     pagmo::algorithm to_algorithm() const

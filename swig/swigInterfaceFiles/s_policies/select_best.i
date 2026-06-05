@@ -40,8 +40,8 @@ public:
 // ------------------------------------------------------------
 %extend pagmo::select_best {
 
-    pagmoWrap::IndividualsGroup select(
-        const pagmoWrap::IndividualsGroup &a,
+    ::pagmoWrap::IndividualsGroup select(
+        const ::pagmoWrap::IndividualsGroup &a,
         const pagmo::vector_double::size_type &b,
         const pagmo::vector_double::size_type &c,
         const pagmo::vector_double::size_type &d,
@@ -50,8 +50,8 @@ public:
         const pagmo::vector_double &g
     ) const {
 
-        auto aa = pagmoWrap::ToIndividualsGroupTuple(a);
+        auto aa = ::pagmoWrap::ToIndividualsGroupTuple(a);
         auto rr = self->select(aa, b, c, d, e, f, g);
-        return pagmoWrap::FromIndividualsGroupTuple(rr);
+        return ::pagmoWrap::FromIndividualsGroupTuple(rr);
     }
 }

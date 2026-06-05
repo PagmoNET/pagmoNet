@@ -35,25 +35,25 @@ public:
 // Add a SWIG-safe wrapper for the tuple-based method.
 %extend pagmo::fair_replace {
 
-    pagmoWrap::IndividualsGroup replace_wrapped(
-        const pagmoWrap::IndividualsGroup &a,
+    ::pagmoWrap::IndividualsGroup replace_wrapped(
+        const ::pagmoWrap::IndividualsGroup &a,
         const pagmo::vector_double::size_type &b,
         const pagmo::vector_double::size_type &c,
         const pagmo::vector_double::size_type &d,
         const pagmo::vector_double::size_type &e,
         const pagmo::vector_double::size_type &f,
         const pagmo::vector_double &g,
-        const pagmoWrap::IndividualsGroup &h
+        const ::pagmoWrap::IndividualsGroup &h
     ) const {
 
         // Convert struct -> tuple
-        auto aa = pagmoWrap::ToIndividualsGroupTuple(a);
-        auto hh = pagmoWrap::ToIndividualsGroupTuple(h);
+        auto aa = ::pagmoWrap::ToIndividualsGroupTuple(a);
+        auto hh = ::pagmoWrap::ToIndividualsGroupTuple(h);
 
         // Call real pagmo implementation
         auto rr = self->replace(aa, b, c, d, e, f, g, hh);
 
         // Convert tuple -> struct
-        return pagmoWrap::FromIndividualsGroupTuple(rr);
+        return ::pagmoWrap::FromIndividualsGroupTuple(rr);
     }
 }

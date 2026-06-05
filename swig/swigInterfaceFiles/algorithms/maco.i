@@ -28,9 +28,9 @@ public:
 };
 
 %extend pagmo::maco {
-    std::vector<pagmoWrap::MoVectorLogEntry> get_log_entries() const
+    std::vector < ::pagmoWrap::MoVectorLogEntry> get_log_entries() const
     {
-        return pagmoWrap::Maco_GetLogEntries(*self);
+        return ::pagmoWrap::Maco_GetLogEntries(*self);
     }
 
     pagmo::algorithm to_algorithm() const

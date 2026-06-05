@@ -5,7 +5,7 @@
 %typemap(csclassmodifiers) pagmo::bfe "public partial class"
 %typemap(csclassmodifiers) pagmoWrap::bfe_callback "public partial class"
 
-class bfe {
+class pagmo::bfe {
     virtual std::string get_name() const = 0;
 };
 
