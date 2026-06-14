@@ -271,4 +271,22 @@
         }
         return out;
     }
+
+    // ----------------------------
+    // Indexed access (avoids SWIGTYPE for vector returns in SWIG 4.2)
+    // ----------------------------
+    int get_migrants_db_count() const {
+        return (int)self->get_migrants_db().size();
+    }
+    ::pagmoWrap::IndividualsGroup get_migrants_db_item(int idx) const {
+        const auto& db = self->get_migrants_db();
+        return ::pagmoWrap::FromIndividualsGroupTuple(db.at((std::size_t)idx));
+    }
+    int get_migration_log_entry_count() const {
+        return (int)self->get_migration_log().size();
+    }
+    ::pagmoWrap::MigrationEntry get_migration_log_entry(int idx) const {
+        const auto& log = self->get_migration_log();
+        return ::pagmoWrap::FromMigrationEntryTuple(log.at((std::size_t)idx));
+    }
 }
