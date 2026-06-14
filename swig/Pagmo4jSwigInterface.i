@@ -76,6 +76,13 @@ extern void* pagmonet_estimate_gradient_h_problem(void* problemPtr, void* xPtr, 
 extern void* pagmonet_estimate_sparsity_problem(void* problemPtr, void* xPtr, double dx);
 extern bool pagmonet4j_has_nlopt_support();
 extern bool pagmonet4j_has_ipopt_support();
+// Forward declarations so the generated wrap file can call these C functions.
+%{
+extern "C" {
+    bool pagmonet4j_has_nlopt_support();
+    bool pagmonet4j_has_ipopt_support();
+}
+%}
 
 // ── Java typemaps for unsigned integer types ──────────────────────────────────
 // unsigned int → long (fits in signed long; used for seeds and population sizes)
