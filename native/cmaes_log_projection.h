@@ -1,9 +1,11 @@
 #pragma once
 
+#ifndef SWIG
 #include <tuple>
 #include <vector>
 
 #include "pagmo/algorithms/cmaes.hpp"
+#endif // SWIG
 
 namespace pagmoWrap {
 
@@ -33,6 +35,7 @@ struct CmaesLogEntry {
     }
 };
 
+#ifndef SWIG
 inline std::vector<CmaesLogEntry> Cmaes_GetLogEntries(const pagmo::cmaes &algo)
 {
     std::vector<CmaesLogEntry> entries;
@@ -51,5 +54,6 @@ inline std::vector<CmaesLogEntry> Cmaes_GetLogEntries(const pagmo::cmaes &algo)
 
     return entries;
 }
+#endif // SWIG
 
 } // namespace pagmoWrap

@@ -1,9 +1,11 @@
 #pragma once
 
+#ifndef SWIG
 #include <tuple>
 #include <vector>
 
 #include "pagmo/algorithms/de.hpp"
+#endif // SWIG
 
 namespace pagmoWrap {
 
@@ -30,6 +32,7 @@ struct DeLogEntry {
     }
 };
 
+#ifndef SWIG
 inline std::vector<DeLogEntry> De_GetLogEntries(const pagmo::de &algo)
 {
     std::vector<DeLogEntry> entries;
@@ -47,5 +50,6 @@ inline std::vector<DeLogEntry> De_GetLogEntries(const pagmo::de &algo)
 
     return entries;
 }
+#endif // SWIG
 
 } // namespace pagmoWrap

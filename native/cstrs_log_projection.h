@@ -1,9 +1,11 @@
 #pragma once
 
+#ifndef SWIG
 #include <tuple>
 #include <vector>
 
 #include "pagmo/algorithms/cstrs_self_adaptive.hpp"
+#endif // SWIG
 
 namespace pagmoWrap {
 
@@ -36,6 +38,7 @@ struct CstrsLogEntry {
     }
 };
 
+#ifndef SWIG
 inline std::vector<CstrsLogEntry> Cstrs_GetLogEntries(const pagmo::cstrs_self_adaptive &algo)
 {
     std::vector<CstrsLogEntry> entries;
@@ -55,5 +58,6 @@ inline std::vector<CstrsLogEntry> Cstrs_GetLogEntries(const pagmo::cstrs_self_ad
 
     return entries;
 }
+#endif // SWIG
 
 } // namespace pagmoWrap

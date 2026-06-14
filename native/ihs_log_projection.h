@@ -1,9 +1,11 @@
 #pragma once
 
+#ifndef SWIG
 #include <tuple>
 #include <vector>
 
 #include "pagmo/algorithms/ihs.hpp"
+#endif // SWIG
 
 namespace pagmoWrap {
 
@@ -39,6 +41,7 @@ struct IhsLogEntry {
     }
 };
 
+#ifndef SWIG
 inline std::vector<IhsLogEntry> Ihs_GetLogEntries(const pagmo::ihs &algo)
 {
     std::vector<IhsLogEntry> entries;
@@ -59,5 +62,6 @@ inline std::vector<IhsLogEntry> Ihs_GetLogEntries(const pagmo::ihs &algo)
 
     return entries;
 }
+#endif // SWIG
 
 } // namespace pagmoWrap
