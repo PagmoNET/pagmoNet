@@ -23,31 +23,24 @@
 %typemap(csclassmodifiers) pagmo::archipelago "public partial class"
 %typemap(csclassmodifiers) archipelago "public partial class"
 
-// Dispose(bool) and partial hook — injected verbatim into the class body.
-// Allows the extension partial class to receive a managed-dispose notification
-// without redefining Dispose(bool).
-%typemap(cscode) pagmo::archipelago %{
-  protected virtual void Dispose(bool disposing) {
+// Override csdisposing to extend the delete logic with an OnManagedDispose() hook.
+// csdispose (not overridden) generates ~archipelago() + public void Dispose() per SWIG default.
+// cscode (below) only injects the partial method declaration.
+%typemap(csdisposing, methodname="Dispose", methodmodifiers="protected", parameters="bool disposing") pagmo::archipelago {
     lock(this) {
       if (swigCPtr.Handle != global::System.IntPtr.Zero) {
         if (swigCMemOwn) {
           swigCMemOwn = false;
-          $imclassname.delete_archipelago(swigCPtr);
+          $imcall;
         }
         swigCPtr = new global::System.Runtime.InteropServices.HandleRef(null, global::System.IntPtr.Zero);
       }
     }
     if (disposing) OnManagedDispose();
   }
-  partial void OnManagedDispose();
-%}
 
-// Public Dispose() delegates to the overridable Dispose(bool disposing).
-// Using explicit methodname/methodmodifiers so SWIG generates only this
-// method and does not additionally inject verbatim content as a class member.
-%typemap(csdispose, methodname="Dispose", methodmodifiers="public") pagmo::archipelago %{
-    Dispose(true);
-    global::System.GC.SuppressFinalize(this);
+%typemap(cscode) pagmo::archipelago %{
+  partial void OnManagedDispose();
 %}
 
 // SWIG parses only the facade.
