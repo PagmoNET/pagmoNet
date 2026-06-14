@@ -138,9 +138,7 @@ extern "C" {
 %typemap(javainterfaces) pagmo::simulated_annealing "io.github.samthegliderpilot.pagmonet4j.algorithms.IAlgorithm, AutoCloseable"
 %typemap(javainterfaces) pagmo::xnes               "io.github.samthegliderpilot.pagmonet4j.algorithms.IAlgorithm, AutoCloseable"
 %typemap(javainterfaces) pagmo::nlopt              "io.github.samthegliderpilot.pagmonet4j.algorithms.IAlgorithm, AutoCloseable"
-#ifdef PAGMO_WITH_IPOPT_JNI
 %typemap(javainterfaces) pagmo::ipopt              "io.github.samthegliderpilot.pagmonet4j.algorithms.IAlgorithm, AutoCloseable"
-#endif
 
 // ── javaimports: sub-package imports for generated classes ────────────────────
 %typemap(javaimports) pagmo::archipelago      "import io.github.samthegliderpilot.pagmonet4j.problems.*; import io.github.samthegliderpilot.pagmonet4j.algorithms.*; import io.github.samthegliderpilot.pagmonet4j.batchevaluators.*; import io.github.samthegliderpilot.pagmonet4j.migration.*;"
@@ -175,9 +173,7 @@ extern "C" {
 %typemap(javaimports) pagmo::sga              "import io.github.samthegliderpilot.pagmonet4j.algorithms.*;"
 %typemap(javaimports) pagmo::xnes             "import io.github.samthegliderpilot.pagmonet4j.algorithms.*;"
 %typemap(javaimports) pagmo::nlopt            "import io.github.samthegliderpilot.pagmonet4j.algorithms.*;"
-#ifdef PAGMO_WITH_IPOPT_JNI
 %typemap(javaimports) pagmo::ipopt            "import io.github.samthegliderpilot.pagmonet4j.algorithms.*;"
-#endif
 
 // ── Log projection injection ──────────────────────────────────────────────────
 %typemap(javacode) pagmo::bee_colony %{
@@ -890,6 +886,7 @@ namespace pagmo {
     %include "swigInterfaceFiles/algorithms/gaco.i"
     %include "swigInterfaceFiles/algorithms/gwo.i"
 #ifdef PAGMO_WITH_IPOPT_JNI
+    namespace Ipopt { typedef int Index; typedef int ApplicationReturnStatus; }
     %include "swigInterfaceFiles/algorithms/ipopt.i"
 #endif
     %include "swigInterfaceFiles/algorithms/nlopt.i"
