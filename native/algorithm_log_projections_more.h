@@ -1,5 +1,6 @@
 #pragma once
 
+#ifndef SWIG
 #include <tuple>
 #include <vector>
 
@@ -24,6 +25,7 @@
 #if defined(PAGMO_WITH_IPOPT)
 #include "pagmo/algorithms/ipopt.hpp"
 #endif
+#endif // SWIG
 
 namespace pagmoWrap {
 
@@ -132,6 +134,16 @@ struct SeaLogEntry {
     double improvement{};
     unsigned long long offspring_evals{};
 };
+
+struct Snopt7LogEntry {
+    unsigned long long major_iterations{};
+    unsigned long long fevals{};
+    double objective{};
+    double infeasibility{};
+    bool feasible{};
+};
+
+#ifndef SWIG
 
 inline std::vector<PsoLogEntry> Pso_GetLogEntries(const pagmo::pso &algo)
 {
@@ -280,14 +292,6 @@ inline std::vector<IpoptLogEntry> Ipopt_GetLogEntries(const pagmo::ipopt &algo)
 }
 #endif
 
-struct Snopt7LogEntry {
-    unsigned long long major_iterations{};
-    unsigned long long fevals{};
-    double objective{};
-    double infeasibility{};
-    bool feasible{};
-};
-
 #if defined(PAGMO_WITH_SNOPT7)
 #include "pagmo/algorithms/snopt7.hpp"
 inline std::vector<Snopt7LogEntry> Snopt7_GetLogEntries(const pagmo::snopt7 &algo)
@@ -345,5 +349,7 @@ inline std::vector<SeaLogEntry> Sea_GetLogEntries(const pagmo::sea &algo)
     }
     return entries;
 }
+
+#endif // SWIG
 
 } // namespace pagmoWrap

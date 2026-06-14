@@ -5,18 +5,36 @@
 - Main goal: robust C# interop for pagmo runtime + extensibility points.
 
 ## Repository Structure
-- `Pagmo.NET/`
-  - Generated SWIG C# wrappers: `pygmoWrappers/`
-  - Handwritten C# extensions/adapters: `pagmoExtensions/`
-- `pagmoWrapper/`
-  - Generated SWIG C++ wrapper: `GeneratedWrappers.cxx`
-  - Native bridge/shim code (interop glue)
-- `swig/`
-  - SWIG `.i` interface files + vendored headers used for wrapper generation
-- `Tests/Tests.Pagmo.NET/`
-  - NUnit tests for wrapper behavior and runtime wiring
-- `scripts/`
-  - Build/regeneration helpers (`regen-swig.ps1`, `build-native.ps1`)
+
+This submodule (`pagmoNet`) is shared by two consumer repos:
+- **pagmo.NET** — C# bindings (entry point: `swig/PagmoNETSwigInterface.i`)
+- **PagmoNet4j** — Java/Kotlin bindings (entry point: `swig/Pagmo4jSwigInterface.i`)
+
+### pagmoNet (this submodule)
+- `swig/` — All SWIG interface files and shared C++ bridge code
+  - `shared_core.i` — Core typemaps/types shared by both languages
+  - `Pagmo4jSwigInterface.i` — Java binding entry point
+  - `PagmoNETSwigInterface.i` — C# binding entry point
+  - `swigInterfaceFiles/` — Per-type `.i` files by category (`algorithms/`, `problems/`, `batch_evaluators/`, `topologies/`, `islands/`, `r_policies/`, `s_policies/`, `utils/`)
+  - `pagmo/` — Vendored pagmo header mirrors
+  - Bridge headers: `algorithm_callback.h`, `bfe_callback.h`, `problem.h`, `r_policy.h`, `s_policy.h`, `island_swig.h`, `archipelago_swig.h`, `tuple_adapters.h`, etc.
+  - Bridge source: `managed_bridge.cpp` (shared), `GeneratedWrappers.cxx` / `nloptGenerated.cxx` (C# only)
+- `ports/` — vcpkg overlay ports (pagmo2 customizations)
+- `triplets/` — vcpkg triplets (`x64-windows-static-md`, `x64-linux-static-pic`, `arm64-osx-static-pic`)
+- `scripts/` — `build-native.ps1`, `regen-swig.ps1`
+
+### PagmoNet4j (Java consumer repo layout)
+- `core/` — Main Java library
+  - `src/generated/java/` — SWIG-generated wrappers (committed; authoritative Java API source)
+  - `src/main/java/.../pagmonet4j/` — Handwritten Java: `algorithms/`, `batchevaluators/`, `migration/`, `problems/`, `utils/`
+  - `src/test/java/` — JUnit 5 test suite
+- `kotlin-ext/` — Kotlin DSL extensions
+- `examples/` — Example programs (Java + Kotlin)
+- `pagmoWrapper/` — JNI native library build
+  - `CMakeLists.txt` — Builds `pagmonet4j.dll`/`libpagmonet4j.so`; SWIG regenerates wrap on CI
+  - `generated/` — Committed wrap file (stale fallback; CMake regenerates from `.i` sources at build time)
+  - `ipopt_stubs/` — Stub headers for building without IPOPT
+- `scripts/` — `build-native.ps1`, `regen-swig.ps1`
 
 ## Working Model
 - Regenerate SWIG first, then native build. Do not run those in parallel.

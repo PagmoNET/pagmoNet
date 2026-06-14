@@ -1,10 +1,12 @@
 #pragma once
 
+#ifndef SWIG
 #include <vector>
 #include <tuple>
 #include <cstddef>
 
 #include <pagmo/types.hpp>
+#endif // SWIG
 
 namespace pagmoWrap {
 

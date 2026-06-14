@@ -1,8 +1,10 @@
 #pragma once
 
+#ifndef SWIG
 #include <vector>
 
 #include <pagmo/algorithms/gaco.hpp>
+#endif // SWIG
 
 namespace pagmoWrap {
 
