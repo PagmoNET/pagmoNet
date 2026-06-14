@@ -41,7 +41,9 @@ see https://www.gnu.org/licenses/. */
 #define PAGMO_VERSION_PATCH 1
 #define PAGMO_WITH_EIGEN3
 #define PAGMO_WITH_NLOPT
-#define PAGMO_WITH_IPOPT
+// PAGMO_WITH_IPOPT intentionally omitted from the mirror — the base SWIG regen
+// does not include ipopt.i. The pagmo.NET.ipopt build passes -DPAGMO_WITH_IPOPT
+// explicitly on the SWIG command line when it needs the IPOPT wrappers.
 
 
 

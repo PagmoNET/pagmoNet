@@ -78,6 +78,16 @@
         return ::pagmoWrap::Island_FromAlgoProb(a, prob, pop_size, seed);
     }
 
+    static pagmo::island Create(
+        const pagmo::algorithm &a,
+        const pagmo::problem &prob,
+        const pagmo::bfe &b,
+        std::size_t pop_size,
+        unsigned seed
+    ) {
+        return ::pagmoWrap::Island_FromAlgoProbBfe(a, prob, b, pop_size, seed);
+    }
+
     static pagmo::island CreateWithThreadIsland(
         const pagmo::thread_island &isl,
         const pagmo::algorithm &a,

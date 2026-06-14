@@ -74,6 +74,8 @@ extern void* pagmonet_population_new(void* problemPtr, long popSize, unsigned in
 extern void* pagmonet_estimate_gradient_problem(void* problemPtr, void* xPtr, double dx);
 extern void* pagmonet_estimate_gradient_h_problem(void* problemPtr, void* xPtr, double dx);
 extern void* pagmonet_estimate_sparsity_problem(void* problemPtr, void* xPtr, double dx);
+extern bool pagmonet4j_has_nlopt_support();
+extern bool pagmonet4j_has_ipopt_support();
 
 // ── Java typemaps for unsigned integer types ──────────────────────────────────
 // unsigned int → long (fits in signed long; used for seeds and population sizes)
@@ -207,16 +209,14 @@ extern void* pagmonet_estimate_sparsity_problem(void* problemPtr, void* xPtr, do
 
 %typemap(javacode) pagmo::de %{
     public java.util.List<DeLogLine> getTypedLogLines() {
-        DeLogEntryVector raw = get_log_entries();
-        try {
-            java.util.List<DeLogLine> out = new java.util.ArrayList<>((int) raw.size());
-            for (int i = 0; i < (int) raw.size(); i++) {
-                DeLogEntry e = raw.get(i);
-                try { out.add(new DeLogLine(e.getGen(), e.getFevals().longValue(), e.getBest(), e.getFeval_difference(), e.getDx())); }
-                finally { e.delete(); }
-            }
-            return out;
-        } finally { raw.delete(); }
+        int count = get_log_entry_count();
+        java.util.List<DeLogLine> out = new java.util.ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            DeLogEntry e = get_log_entry(i);
+            try { out.add(new DeLogLine(e.getGen(), e.getFevals().longValue(), e.getBest(), e.getFeval_difference(), e.getDx())); }
+            finally { e.delete(); }
+        }
+        return out;
     }
     @Override public java.util.List<IAlgorithmLogLine> getLogLines() {
         return new java.util.ArrayList<>(getTypedLogLines());
@@ -241,16 +241,14 @@ extern void* pagmonet_estimate_sparsity_problem(void* problemPtr, void* xPtr, do
 
 %typemap(javacode) pagmo::pso %{
     public java.util.List<PsoLogLine> getTypedLogLines() {
-        PsoLogEntryVector raw = get_log_entries();
-        try {
-            java.util.List<PsoLogLine> out = new java.util.ArrayList<>((int) raw.size());
-            for (int i = 0; i < (int) raw.size(); i++) {
-                PsoLogEntry e = raw.get(i);
-                try { out.add(new PsoLogLine(e.getGen(), e.getFevals().longValue(), e.getBest(), e.getInertia(), e.getCognitive(), e.getSocial())); }
-                finally { e.delete(); }
-            }
-            return out;
-        } finally { raw.delete(); }
+        int count = get_log_entry_count();
+        java.util.List<PsoLogLine> out = new java.util.ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            PsoLogEntry e = get_log_entry(i);
+            try { out.add(new PsoLogLine(e.getGen(), e.getFevals().longValue(), e.getBest(), e.getInertia(), e.getCognitive(), e.getSocial())); }
+            finally { e.delete(); }
+        }
+        return out;
     }
     @Override public java.util.List<IAlgorithmLogLine> getLogLines() {
         return new java.util.ArrayList<>(getTypedLogLines());
@@ -284,16 +282,14 @@ extern void* pagmonet_estimate_sparsity_problem(void* problemPtr, void* xPtr, do
 
 %typemap(javacode) pagmo::cmaes %{
     public java.util.List<CmaesLogLine> getTypedLogLines() {
-        CmaesLogEntryVector raw = get_log_entries();
-        try {
-            java.util.List<CmaesLogLine> out = new java.util.ArrayList<>((int) raw.size());
-            for (int i = 0; i < (int) raw.size(); i++) {
-                CmaesLogEntry e = raw.get(i);
-                try { out.add(new CmaesLogLine(e.getGen(), e.getFevals().longValue(), e.getBest(), e.getSigma(), e.getMin_variance(), e.getMax_variance())); }
-                finally { e.delete(); }
-            }
-            return out;
-        } finally { raw.delete(); }
+        int count = get_log_entry_count();
+        java.util.List<CmaesLogLine> out = new java.util.ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            CmaesLogEntry e = get_log_entry(i);
+            try { out.add(new CmaesLogLine(e.getGen(), e.getFevals().longValue(), e.getBest(), e.getSigma(), e.getMin_variance(), e.getMax_variance())); }
+            finally { e.delete(); }
+        }
+        return out;
     }
     @Override public java.util.List<IAlgorithmLogLine> getLogLines() {
         return new java.util.ArrayList<>(getTypedLogLines());
@@ -317,16 +313,14 @@ extern void* pagmonet_estimate_sparsity_problem(void* problemPtr, void* xPtr, do
 
 %typemap(javacode) pagmo::simulated_annealing %{
     public java.util.List<SALogLine> getTypedLogLines() {
-        SimulatedAnnealingLogEntryVector raw = get_log_entries();
-        try {
-            java.util.List<SALogLine> out = new java.util.ArrayList<>((int) raw.size());
-            for (int i = 0; i < (int) raw.size(); i++) {
-                SimulatedAnnealingLogEntry e = raw.get(i);
-                try { out.add(new SALogLine(e.getFevals().longValue(), e.getBest(), e.getCurrent(), e.getTemperature())); }
-                finally { e.delete(); }
-            }
-            return out;
-        } finally { raw.delete(); }
+        int count = get_log_entry_count();
+        java.util.List<SALogLine> out = new java.util.ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            SimulatedAnnealingLogEntry e = get_log_entry(i);
+            try { out.add(new SALogLine(e.getFevals().longValue(), e.getBest(), e.getCurrent(), e.getTemperature())); }
+            finally { e.delete(); }
+        }
+        return out;
     }
     @Override public java.util.List<IAlgorithmLogLine> getLogLines() {
         return new java.util.ArrayList<>(getTypedLogLines());
@@ -349,16 +343,14 @@ extern void* pagmonet_estimate_sparsity_problem(void* problemPtr, void* xPtr, do
 
 %typemap(javacode) pagmo::compass_search %{
     public java.util.List<CSLogLine> getTypedLogLines() {
-        CompassSearchLogEntryVector raw = get_log_entries();
-        try {
-            java.util.List<CSLogLine> out = new java.util.ArrayList<>((int) raw.size());
-            for (int i = 0; i < (int) raw.size(); i++) {
-                CompassSearchLogEntry e = raw.get(i);
-                try { out.add(new CSLogLine(e.getFevals().longValue(), e.getBest(), e.getRange())); }
-                finally { e.delete(); }
-            }
-            return out;
-        } finally { raw.delete(); }
+        int count = get_log_entry_count();
+        java.util.List<CSLogLine> out = new java.util.ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            CompassSearchLogEntry e = get_log_entry(i);
+            try { out.add(new CSLogLine(e.getFevals().longValue(), e.getBest(), e.getRange())); }
+            finally { e.delete(); }
+        }
+        return out;
     }
     @Override public java.util.List<IAlgorithmLogLine> getLogLines() {
         return new java.util.ArrayList<>(getTypedLogLines());
@@ -380,16 +372,14 @@ extern void* pagmonet_estimate_sparsity_problem(void* problemPtr, void* xPtr, do
 
 %typemap(javacode) pagmo::ihs %{
     public java.util.List<IhsLogLine> getTypedLogLines() {
-        IhsLogEntryVector raw = get_log_entries();
-        try {
-            java.util.List<IhsLogLine> out = new java.util.ArrayList<>((int) raw.size());
-            for (int i = 0; i < (int) raw.size(); i++) {
-                IhsLogEntry e = raw.get(i);
-                try { out.add(new IhsLogLine(e.getFevals().longValue(), e.getPpar(), e.getBw(), e.getDx(), e.getDf())); }
-                finally { e.delete(); }
-            }
-            return out;
-        } finally { raw.delete(); }
+        int count = get_log_entry_count();
+        java.util.List<IhsLogLine> out = new java.util.ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            IhsLogEntry e = get_log_entry(i);
+            try { out.add(new IhsLogLine(e.getFevals().longValue(), e.getPpar(), e.getBw(), e.getDx(), e.getDf())); }
+            finally { e.delete(); }
+        }
+        return out;
     }
     @Override public java.util.List<IAlgorithmLogLine> getLogLines() {
         return new java.util.ArrayList<>(getTypedLogLines());
@@ -412,16 +402,14 @@ extern void* pagmonet_estimate_sparsity_problem(void* problemPtr, void* xPtr, do
 
 %typemap(javacode) pagmo::mbh %{
     public java.util.List<MbhLogLine> getTypedLogLines() {
-        MbhLogEntryVector raw = get_log_entries();
-        try {
-            java.util.List<MbhLogLine> out = new java.util.ArrayList<>((int) raw.size());
-            for (int i = 0; i < (int) raw.size(); i++) {
-                MbhLogEntry e = raw.get(i);
-                try { out.add(new MbhLogLine(e.getFevals().longValue(), e.getBest(), e.getTrial())); }
-                finally { e.delete(); }
-            }
-            return out;
-        } finally { raw.delete(); }
+        int count = get_log_entry_count();
+        java.util.List<MbhLogLine> out = new java.util.ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            MbhLogEntry e = get_log_entry(i);
+            try { out.add(new MbhLogLine(e.getFevals().longValue(), e.getBest(), e.getTrial())); }
+            finally { e.delete(); }
+        }
+        return out;
     }
     @Override public java.util.List<IAlgorithmLogLine> getLogLines() {
         return new java.util.ArrayList<>(getTypedLogLines());
@@ -674,7 +662,7 @@ PAGMO4J_SIMPLE_ALGO_CODE(ipopt)
             policyCallbackRoots.add(rAdapter);
             policyCallbackRoots.add(sAdapter);
             return push_back_island(algo, wrapped,
-                new ManagedRPolicy(rAdapter), new ManagedSPolicy(sAdapter), nativePop, seed);
+                nativePop, new ManagedRPolicy(rAdapter), new ManagedSPolicy(sAdapter), seed);
         });
     }
 
@@ -702,7 +690,7 @@ PAGMO4J_SIMPLE_ALGO_CODE(ipopt)
 
     private static RPolicyCallbackAdapter wrapRPolicy(IRPolicy rPolicy) {
         RPolicyCallbackAdapter adapter = new RPolicyCallbackAdapter() {
-            @Override public IndividualsGroup replace(
+            @Override protected IndividualsGroup replaceManaged(
                     IndividualsGroup incoming, long n_f, long n_ec, long n_ic, long n_obj,
                     long pop_size, DoubleVector tol, IndividualsGroup current) {
                 return rPolicy.replace(incoming, n_f, n_ec, n_ic, n_obj, pop_size, tol, current);
@@ -715,7 +703,7 @@ PAGMO4J_SIMPLE_ALGO_CODE(ipopt)
 
     private static SPolicyCallbackAdapter wrapSPolicy(ISPolicy sPolicy) {
         SPolicyCallbackAdapter adapter = new SPolicyCallbackAdapter() {
-            @Override public IndividualsGroup select(
+            @Override protected IndividualsGroup selectManaged(
                     IndividualsGroup population, long n_f, long n_ec, long n_ic, long n_obj,
                     long pop_size, DoubleVector tol) {
                 return sPolicy.select(population, n_f, n_ec, n_ic, n_obj, pop_size, tol);

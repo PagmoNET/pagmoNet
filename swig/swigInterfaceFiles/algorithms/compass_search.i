@@ -30,9 +30,12 @@ public:
 };
 
 %extend compass_search {
-    std::vector < ::pagmoWrap::CompassSearchLogEntry> get_log_entries() const
-    {
-        return ::pagmoWrap::CompassSearch_GetLogEntries(*self);
+    int get_log_entry_count() const { return (int)$self->get_log().size(); }
+    ::pagmoWrap::CompassSearchLogEntry get_log_entry(int idx) const {
+        const auto& line = $self->get_log().at((std::size_t)idx);
+        return {std::get<0>(line), std::get<1>(line),
+                static_cast<unsigned long long>(std::get<2>(line)),
+                std::get<3>(line), std::get<4>(line)};
     }
 
     pagmo::algorithm to_algorithm() const

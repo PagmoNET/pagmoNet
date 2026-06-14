@@ -376,36 +376,24 @@ PAGMONET_EXPORT void *pagmonet_estimate_sparsity_problem(void *problem_ptr, void
 }
 
 // ── Optional-solver availability probes ──────────────────────────────────────
-// These return compile-time flags without constructing any pagmo object,
-// making them safe to call even when the underlying solver library is absent.
-// Guarded by __has_include so they compile only when JNI headers are present
-// (Java JNI build). The C# native build does not have jni.h on its include
-// path, so this block is skipped there.
-#if __has_include(<jni.h>)
-#include <jni.h>
-#include <pagmo/config.hpp>
-
-PAGMONET_EXPORT jboolean JNICALL
-Java_io_github_samthegliderpilot_pagmonet4j_pagmonet4jJNI_pagmonet4j_1has_1nlopt_1support(
-    JNIEnv *, jclass)
+// SWIG generates JNI wrappers for these; they are declared in Pagmo4jSwigInterface.i.
+// pagmo/config.hpp is already transitively included via pagmo/problem.hpp above.
+PAGMONET_EXPORT bool pagmonet4j_has_nlopt_support()
 {
 #if defined(PAGMO_WITH_NLOPT)
-    return JNI_TRUE;
+    return true;
 #else
-    return JNI_FALSE;
+    return false;
 #endif
 }
 
-PAGMONET_EXPORT jboolean JNICALL
-Java_io_github_samthegliderpilot_pagmonet4j_pagmonet4jJNI_pagmonet4j_1has_1ipopt_1support(
-    JNIEnv *, jclass)
+PAGMONET_EXPORT bool pagmonet4j_has_ipopt_support()
 {
 #if defined(PAGMONET4J_WITH_IPOPT)
-    return JNI_TRUE;
+    return true;
 #else
-    return JNI_FALSE;
+    return false;
 #endif
 }
-#endif // __has_include(<jni.h>)
 
 } // extern "C"

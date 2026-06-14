@@ -31,9 +31,12 @@ public:
 };
 
 %extend pagmo::mbh {
-    std::vector < ::pagmoWrap::MbhLogEntry> get_log_entries() const
-    {
-        return ::pagmoWrap::Mbh_GetLogEntries(*$self);
+    int get_log_entry_count() const { return (int)$self->get_log().size(); }
+    ::pagmoWrap::MbhLogEntry get_log_entry(int idx) const {
+        const auto& row = $self->get_log().at((std::size_t)idx);
+        return {std::get<0>(row), std::get<1>(row),
+                static_cast<unsigned>(std::get<2>(row)),
+                std::get<3>(row), std::get<4>(row)};
     }
 
     pagmo::algorithm to_algorithm() const
