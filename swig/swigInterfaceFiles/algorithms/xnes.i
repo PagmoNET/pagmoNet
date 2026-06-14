@@ -27,9 +27,10 @@ public:
 };
 
 %extend xnes {
-    std::vector < ::pagmoWrap::XnesLogEntry> get_log_entries() const
-    {
-        return ::pagmoWrap::Xnes_GetLogEntries(*self);
+    int get_log_entry_count() const { return (int)$self->get_log().size(); }
+    ::pagmoWrap::XnesLogEntry get_log_entry(int idx) const {
+        const auto& line = $self->get_log().at((std::size_t)idx);
+        return {std::get<0>(line), std::get<1>(line), std::get<2>(line), std::get<3>(line), std::get<4>(line), std::get<5>(line)};
     }
 
     pagmo::algorithm to_algorithm() const

@@ -30,6 +30,10 @@
 %include "multi_objective.h"
 
 namespace pagmo {
+    typedef std::size_t pop_size_t;
+}
+
+namespace pagmo {
 // Pareto-dominance
 extern bool pareto_dominance(const pagmo::vector_double&, const pagmo::vector_double&);
 
