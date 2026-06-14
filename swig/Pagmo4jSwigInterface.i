@@ -754,9 +754,7 @@ PAGMO4J_SIMPLE_ALGO_CODE(ipopt)
                     "clone() returned null. Override clone() to return an independent copy, " +
                     "or declare ThreadSafety.Basic or ThreadSafety.Constant.");
             }
-            if (test instanceof AutoCloseable c) {
-                try { c.close(); } catch (Exception ignored) {}
-            }
+            try { test.close(); } catch (Exception ignored) {}
         }
         problem wrapped = new problem(problem);
         long nativePop = SizeTInterop.toNativeUInt32(popSize, "popSize");
