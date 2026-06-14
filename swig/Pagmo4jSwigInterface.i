@@ -745,18 +745,23 @@ PAGMO4J_SIMPLE_ALGO_CODE(ipopt)
     public static island create(algorithm algo, IProblem problem, long popSize, long seed) {
         // Managed problems are Java callbacks (SWIG directors) that can't survive fork().
         // Always use thread_island so Linux/macOS behaves like Windows.
+        // For ThreadSafety.None problems, use a clone wrapped in ExclusiveCloneAdapter,
+        // which reports ThreadSafety.Basic so thread_island accepts it.
+        IProblem effective = problem;
+        ExclusiveCloneAdapter adapter = null;
         if (problem instanceof IThreadCloneableProblem cloneable
                 && problem.get_thread_safety() == ThreadSafety.None) {
-            IProblem test = cloneable.clone();
-            if (test == null) {
+            IProblem clone = cloneable.clone();
+            if (clone == null) {
                 throw new IllegalStateException(
                     "Problem '" + problem.get_name() + "' declares ThreadSafety.None and " +
                     "clone() returned null. Override clone() to return an independent copy, " +
                     "or declare ThreadSafety.Basic or ThreadSafety.Constant.");
             }
-            try { test.close(); } catch (Exception ignored) {}
+            adapter = new ExclusiveCloneAdapter(clone);
+            effective = adapter;
         }
-        problem wrapped = new problem(problem);
+        problem wrapped = new problem(effective);
         long nativePop = SizeTInterop.toNativeUInt32(popSize, "popSize");
         thread_island ti = new thread_island();
         island isl;
@@ -766,6 +771,7 @@ PAGMO4J_SIMPLE_ALGO_CODE(ipopt)
             ti.delete();
         }
         attachRoot(isl, wrapped);
+        if (adapter != null) attachRoot(isl, adapter);
         return isl;
     }
 
