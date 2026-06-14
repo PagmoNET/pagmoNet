@@ -3,7 +3,6 @@
 ## Project Summary
 - `Pagmo.NET` is a C# wrapper/binding layer over pagmo2 using SWIG + native C++ bridge code.
 - Main goal: robust C# interop for pagmo runtime + extensibility points.
-- Current roadmap is tracked in `.ai/ROADMAP.md`.
 
 ## Repository Structure
 - `Pagmo.NET/`
@@ -23,11 +22,6 @@
 - Regenerate SWIG first, then native build. Do not run those in parallel.
 - Avoid editing auto-generated SWIG outputs directly; edit `.i` and handwritten extension files.
 - Prefer boundary-focused managed APIs in `pagmoExtensions` over leaking raw SWIG internals.
-
-## Sprint Strategy (High-Level)
-- Sprint 2 focus: runtime-critical orchestration + stable interop patterns.
-- Breadth (`dozens` of algorithms/problems) is Sprint 3A.
-- Hardening/consistency (API quality, exception mapping, SWIGTYPE cleanup) is Sprint 3B.
 
 ## User Coding Preferences (Persistent)
 - Exception usage: avoid noisy guard clauses unless one of these applies:
@@ -55,7 +49,7 @@
   `pop_size_t` as `unsigned long long` in the pagmo namespace — it conflicts. Instead, use
   `unsigned long long` directly at the SWIG boundary and convert to `pagmo::pop_size_t` inside
   implementations. This affects `multi_objective.h` (`FNDSResult` fields, `RekSum` parameters)
-  and the corresponding `GeneratedWrappers.cxx` SWIG accessor methods.
+  and the corresponding `GeneratedWrappers.cxx` SWIG accessor methods (strategy: `.ai/history/SIZE_T_STRATEGY.md`).
 - **pagmo INTERFACE cmake definitions leak.** `Pagmo::pagmo` exports `PAGMO_WITH_NLOPT=ON`
   and `PAGMO_WITH_IPOPT=ON` as INTERFACE compile definitions when upstream pagmo was built
   with those features (e.g. the Ubuntu apt package). This causes our native library to try to
@@ -76,7 +70,7 @@
 - **Linux native build:** Use `pwsh scripts/build-native.ps1` with `$VCPKG_ROOT` set. The
   script runs `vcpkg install pagmo2:x64-linux-static-pic --overlay-triplets=triplets/` then
   invokes cmake with the vcpkg toolchain. pagmo2, Boost.Serialization, and TBB are linked
-  statically into `libPagmoWrapper.so` — no system runtime deps. See `.ai/LINUX_TESTING_HANDOFF.md`.
+  statically into `libPagmoWrapper.so` — no system runtime deps.
 
 ## Collaboration Expectations
 - If design seems wrong or fragile, explicitly push back and explain why.
