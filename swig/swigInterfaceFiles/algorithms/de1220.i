@@ -29,9 +29,10 @@ public:
 };
 
 %extend de1220 {
-    std::vector < ::pagmoWrap::De1220LogEntry> get_log_entries() const
-    {
-        return ::pagmoWrap::De1220_GetLogEntries(*self);
+    int get_log_entry_count() const { return (int)$self->get_log().size(); }
+    ::pagmoWrap::De1220LogEntry get_log_entry(int idx) const {
+        const auto& line = $self->get_log().at((std::size_t)idx);
+        return {std::get<0>(line), std::get<1>(line), std::get<2>(line), std::get<3>(line), std::get<4>(line), std::get<5>(line), std::get<6>(line), std::get<7>(line)};
     }
 
     pagmo::algorithm to_algorithm() const
