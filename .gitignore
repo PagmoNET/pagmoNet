@@ -1,3 +1,7 @@
+# SWIG-generated files — regenerated from .i sources by CI
+native/GeneratedWrappers.cxx
+native/PagmoNETSwigInterface_wrap.h
+
 native/win-build/
 native/build/
 native/bin/

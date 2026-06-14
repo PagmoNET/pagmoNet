@@ -24,11 +24,13 @@
 - Prefer boundary-focused managed APIs in `pagmoExtensions` over leaking raw SWIG internals.
 
 ## User Coding Preferences (Persistent)
+- We do the right thing, preferably the first time.  We do not cut corners.  If we have to choose between getting something working right now and doing it technically correctly, we pick technically correct.  If we need to just try something to see what happens, sure that is ok, but the very next step after getting it to work is to do it correctly.  
+- Always do the correct thing even if it is harder.  We do not cut corners or disable things because it is simpler, we do things right and do it right the first time.
+- We do NOT edit or check in auto-generated code!
 - Exception usage: avoid noisy guard clauses unless one of these applies:
   1. Safety-critical corruption/risk prevention.
   2. Meaningful higher-signal error than natural downstream exception.
   3. Intentional boundary validation (config-to-execution threshold crossing).
-  4. Always do the correct thing even if it is harder.  We do not cut corners or disable things because it is simpler, we do things right and do it right the first time.
 - Testing philosophy:
   - Tests should validate wrapper wiring/configuration, not algorithm optimality correctness.
   - For wrapper constructor/factory paths, assert configured inputs are reflected in observable state.
@@ -75,4 +77,4 @@
 ## Collaboration Expectations
 - If design seems wrong or fragile, explicitly push back and explain why.
 - Do not preserve legacy patterns just because they exist; prioritize robust/idiomatic architecture.
-- If scope pressure exists, comment out/defer unstable features rather than ship brittle hacks.
+- If scope pressure exists, remove feature from the codebase and add an explicit step to the next sprint

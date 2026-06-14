@@ -264,7 +264,4 @@ namespace std {
     %template(GacoLogEntryVector)                   std::vector<pagmoWrap::GacoLogEntry>;
     %template(IhsLogEntryVector)                    std::vector<pagmoWrap::IhsLogEntry>;
     %template(MbhLogEntryVector)                    std::vector<pagmoWrap::MbhLogEntry>;
-#ifdef SWIGJAVA
-    %template(BeeColonyLogLineVector)               std::vector<pagmoWrap::BeeColonyLogLine>;
-#endif
 }
