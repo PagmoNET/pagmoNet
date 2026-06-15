@@ -54,9 +54,9 @@ public:
         self->set_integer_option(name, static_cast<Ipopt::Index>(value));
     }
 
-    std::vector < ::pagmoWrap::IpoptLogEntry> get_log_entries() const
+    std::vector<pagmoWrap::IpoptLogEntry> get_log_entries() const
     {
-        return ::pagmoWrap::Ipopt_GetLogEntries(*self);
+        return pagmoWrap::Ipopt_GetLogEntries(*self);
     }
 
     pagmo::algorithm to_algorithm() const
