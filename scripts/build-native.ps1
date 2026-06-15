@@ -1,6 +1,7 @@
 param(
     [string]$Configuration = "Debug",
-    [string]$Platform = "x64"
+    [string]$Platform = "x64",
+    [switch]$WithIpopt
 )
 
 $ErrorActionPreference = "Stop"
@@ -20,6 +21,19 @@ try {
     $tripletOverlay = (Resolve-Path (Join-Path $repoRoot "triplets")).Path
     $portsOverlay   = (Resolve-Path (Join-Path $repoRoot "ports")).Path
 
+    # Build the base vcpkg overlay-ports arguments, including any extras from
+    # VCPKG_OVERLAY_PORTS (semicolon-separated) injected by callers (e.g. the
+    # ipopt add-on project which provides coin-or-ipopt as an overlay port).
+    function Get-VcpkgPortArgs {
+        $args = @("--overlay-ports=$portsOverlay")
+        if ($env:VCPKG_OVERLAY_PORTS) {
+            foreach ($extra in ($env:VCPKG_OVERLAY_PORTS -split "[;:]")) {
+                if ($extra.Trim()) { $args += "--overlay-ports=$($extra.Trim())" }
+            }
+        }
+        return $args
+    }
+
     if ($IsLinux) {
         if (-not $env:VCPKG_ROOT) {
             throw "VCPKG_ROOT must be set for Linux builds."
@@ -28,10 +42,11 @@ try {
         $vcpkgToolchain = Join-Path $env:VCPKG_ROOT "scripts/buildsystems/vcpkg.cmake"
         $triplet        = "x64-linux-static-pic"
 
-        Write-Host "==> vcpkg install pagmo2[nlopt,ipopt]:$triplet"
-        & $vcpkgExe install "pagmo2[nlopt,ipopt]:$triplet" `
+        $spec = "pagmo2[nlopt,ipopt]:$triplet"
+        Write-Host "==> vcpkg install $spec"
+        & $vcpkgExe install $spec `
             "--overlay-triplets=$tripletOverlay" `
-            "--overlay-ports=$portsOverlay" `
+            @(Get-VcpkgPortArgs) `
             "--recurse"
         if ($LASTEXITCODE -ne 0) { throw "vcpkg install failed ($LASTEXITCODE)." }
 
@@ -59,10 +74,11 @@ try {
         $arch    = (& uname -m).Trim()
         $triplet = if ($arch -eq "arm64") { "arm64-osx-static-pic" } else { "x64-osx-static-pic" }
 
-        Write-Host "==> vcpkg install pagmo2[nlopt]:$triplet"
-        & $vcpkgExe install "pagmo2[nlopt]:$triplet" `
+        $spec = if ($WithIpopt) { "pagmo2[nlopt,ipopt]:$triplet" } else { "pagmo2[nlopt]:$triplet" }
+        Write-Host "==> vcpkg install $spec"
+        & $vcpkgExe install $spec `
             "--overlay-triplets=$tripletOverlay" `
-            "--overlay-ports=$portsOverlay" `
+            @(Get-VcpkgPortArgs) `
             "--recurse"
         if ($LASTEXITCODE -ne 0) { throw "vcpkg install failed ($LASTEXITCODE)." }
 
@@ -70,13 +86,17 @@ try {
         $cmakeCache = Join-Path $buildDir "CMakeCache.txt"
         if (Test-Path $cmakeCache) { Remove-Item -Force $cmakeCache }
 
-        & cmake `
-            "-B$buildDir" "-S$nativeDir" `
-            "-DCMAKE_BUILD_TYPE=$Configuration" `
-            "-DCMAKE_TOOLCHAIN_FILE=$vcpkgToolchain" `
-            "-DVCPKG_TARGET_TRIPLET=$triplet" `
-            "-DVCPKG_OVERLAY_TRIPLETS=$tripletOverlay" `
+        $ipoptCmakeArg = if ($WithIpopt) { "-DPAGMONET_WITH_IPOPT=ON" } else { $null }
+        $cmakeArgs = @(
+            "-B$buildDir", "-S$nativeDir",
+            "-DCMAKE_BUILD_TYPE=$Configuration",
+            "-DCMAKE_TOOLCHAIN_FILE=$vcpkgToolchain",
+            "-DVCPKG_TARGET_TRIPLET=$triplet",
+            "-DVCPKG_OVERLAY_TRIPLETS=$tripletOverlay",
             "-DPAGMONET_WITH_NLOPT=ON"
+        )
+        if ($ipoptCmakeArg) { $cmakeArgs += $ipoptCmakeArg }
+        & cmake @cmakeArgs
         if ($LASTEXITCODE -ne 0) { throw "cmake configure failed ($LASTEXITCODE)." }
         & cmake --build $buildDir --config $Configuration
         if ($LASTEXITCODE -ne 0) { throw "cmake build failed ($LASTEXITCODE)." }
@@ -89,7 +109,7 @@ try {
         Write-Host "==> vcpkg install pagmo2[nlopt,ipopt]:$triplet"
         & $vcpkgExe install "pagmo2[nlopt,ipopt]:$triplet" `
             "--overlay-triplets=$tripletOverlay" `
-            "--overlay-ports=$portsOverlay" `
+            @(Get-VcpkgPortArgs) `
             "--recurse"
         if ($LASTEXITCODE -ne 0) { throw "vcpkg install failed ($LASTEXITCODE)." }
 
