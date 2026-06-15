@@ -54,9 +54,21 @@ public:
         self->set_integer_option(name, static_cast<Ipopt::Index>(value));
     }
 
-    std::vector<pagmoWrap::IpoptLogEntry> get_log_entries() const
+    int get_log_entry_count() const
     {
-        return pagmoWrap::Ipopt_GetLogEntries(*self);
+        return (int)self->get_log().size();
+    }
+
+    ::pagmoWrap::IpoptLogEntry get_log_entry(int idx) const
+    {
+        const auto &line = self->get_log().at((std::size_t)idx);
+        return ::pagmoWrap::IpoptLogEntry{
+            (unsigned long long)std::get<0>(line),
+            std::get<1>(line),
+            static_cast<unsigned long long>(std::get<2>(line)),
+            std::get<3>(line),
+            std::get<4>(line)
+        };
     }
 
     pagmo::algorithm to_algorithm() const
