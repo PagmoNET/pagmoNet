@@ -27,7 +27,7 @@ try {
     function Get-VcpkgPortArgs {
         $args = @("--overlay-ports=$portsOverlay")
         if ($env:VCPKG_OVERLAY_PORTS) {
-            foreach ($extra in ($env:VCPKG_OVERLAY_PORTS -split "[;:]")) {
+            foreach ($extra in ($env:VCPKG_OVERLAY_PORTS -split ";")) {
                 if ($extra.Trim()) { $args += "--overlay-ports=$($extra.Trim())" }
             }
         }
