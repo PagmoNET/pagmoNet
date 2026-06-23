@@ -104,10 +104,15 @@ try {
     } elseif ($env:VCPKG_ROOT) {
         $vcpkgExe       = Join-Path $env:VCPKG_ROOT "vcpkg.exe"
         $vcpkgToolchain = Join-Path $env:VCPKG_ROOT "scripts/buildsystems/vcpkg.cmake"
-        $triplet        = "x64-windows-static-md"
 
-        Write-Host "==> vcpkg install pagmo2[nlopt,ipopt]:$triplet"
-        & $vcpkgExe install "pagmo2[nlopt,ipopt]:$triplet" `
+        # MUMPS (required for IPOPT) is a Fortran library distributed via MSYS2/MinGW64.
+        # MSYS2's static archives (.a) cannot be linked by MSVC's link.exe — use MinGW.
+        # The caller must have C:\msys64\mingw64\bin on PATH before invoking this script.
+        $triplet  = if ($WithIpopt) { "x64-mingw-static" } else { "x64-windows-static-md" }
+        $features = if ($WithIpopt) { "nlopt,ipopt" } else { "nlopt" }
+
+        Write-Host "==> vcpkg install pagmo2[$features]:$triplet"
+        & $vcpkgExe install "pagmo2[$features]:$triplet" `
             "--overlay-triplets=$tripletOverlay" `
             @(Get-VcpkgPortArgs) `
             "--recurse"
@@ -117,28 +122,43 @@ try {
         $cmakeCache = Join-Path $buildDir "CMakeCache.txt"
         if (Test-Path $cmakeCache) { Remove-Item -Force $cmakeCache }
 
-        $vsWhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
-        if (-not (Test-Path $vsWhere)) { throw "vswhere.exe not found. Install Visual Studio Build Tools." }
-        $vsInstallPath = & $vsWhere -latest -property installationPath
-        $vcvars = Join-Path $vsInstallPath "VC\Auxiliary\Build\vcvars64.bat"
-        if (-not (Test-Path $vcvars)) { throw "vcvars64.bat not found at '$vcvars'." }
+        if ($WithIpopt) {
+            # MinGW build: gcc/g++ from MSYS2 MinGW64 must be on PATH.
+            # -static-libgcc/-static-libstdc++ embed the GCC/libstdc++ runtime into
+            # the DLL; libgfortran (from MUMPS) still loads dynamically from MSYS2.
+            & cmake `
+                "-B$buildDir" "-S$nativeDir" `
+                "-G" "Ninja" `
+                "-DCMAKE_BUILD_TYPE=$Configuration" `
+                "-DCMAKE_TOOLCHAIN_FILE=$vcpkgToolchain" `
+                "-DVCPKG_TARGET_TRIPLET=$triplet" `
+                "-DVCPKG_OVERLAY_TRIPLETS=$tripletOverlay" `
+                "-DCMAKE_SHARED_LINKER_FLAGS=-static-libgcc -static-libstdc++" `
+                "-DPAGMONET_WITH_NLOPT=ON" "-DPAGMONET_WITH_IPOPT=ON"
+        } else {
+            # MSVC build for the base library (no IPOPT).
+            $vsWhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
+            if (-not (Test-Path $vsWhere)) { throw "vswhere.exe not found. Install Visual Studio Build Tools." }
+            $vsInstallPath = & $vsWhere -latest -property installationPath
+            $vcvars = Join-Path $vsInstallPath "VC\Auxiliary\Build\vcvars64.bat"
+            if (-not (Test-Path $vcvars)) { throw "vcvars64.bat not found at '$vcvars'." }
 
-        Write-Host "==> Importing VC environment from $vsInstallPath"
-        $vcEnvLines = cmd /c "`"$vcvars`" > nul 2>&1 && set"
-        foreach ($line in $vcEnvLines) {
-            if ($line -match '^([^=]+)=(.*)$') {
-                [System.Environment]::SetEnvironmentVariable($Matches[1], $Matches[2], 'Process')
+            Write-Host "==> Importing VC environment from $vsInstallPath"
+            $vcEnvLines = cmd /c "`"$vcvars`" > nul 2>&1 && set"
+            foreach ($line in $vcEnvLines) {
+                if ($line -match '^([^=]+)=(.*)$') {
+                    [System.Environment]::SetEnvironmentVariable($Matches[1], $Matches[2], 'Process')
+                }
             }
+            & cmake `
+                "-B$buildDir" "-S$nativeDir" `
+                "-G" "Ninja" `
+                "-DCMAKE_BUILD_TYPE=$Configuration" `
+                "-DCMAKE_TOOLCHAIN_FILE=$vcpkgToolchain" `
+                "-DVCPKG_TARGET_TRIPLET=$triplet" `
+                "-DVCPKG_OVERLAY_TRIPLETS=$tripletOverlay" `
+                "-DPAGMONET_WITH_NLOPT=ON"
         }
-
-        & cmake `
-            "-B$buildDir" "-S$nativeDir" `
-            "-G" "Ninja" `
-            "-DCMAKE_BUILD_TYPE=$Configuration" `
-            "-DCMAKE_TOOLCHAIN_FILE=$vcpkgToolchain" `
-            "-DVCPKG_TARGET_TRIPLET=$triplet" `
-            "-DVCPKG_OVERLAY_TRIPLETS=$tripletOverlay" `
-            "-DPAGMONET_WITH_NLOPT=ON" "-DPAGMONET_WITH_IPOPT=ON"
         if ($LASTEXITCODE -ne 0) { throw "cmake configure failed ($LASTEXITCODE)." }
         & cmake --build $buildDir --config $Configuration
         if ($LASTEXITCODE -ne 0) { throw "cmake build failed ($LASTEXITCODE)." }
