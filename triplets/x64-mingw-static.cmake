@@ -8,3 +8,6 @@ set(VCPKG_CRT_LINKAGE dynamic)
 set(VCPKG_LIBRARY_LINKAGE static)
 set(VCPKG_ENV_PASSTHROUGH PATH)
 set(VCPKG_CHAINLOAD_TOOLCHAIN_FILE "${VCPKG_ROOT_DIR}/scripts/toolchains/mingw.cmake")
+# Skip debug builds: clapack (LAPACK fallback for MinGW) fails to compile in debug mode.
+# We only need release libraries since PagmoWrapper.dll is built in Release.
+set(VCPKG_BUILD_TYPE release)
