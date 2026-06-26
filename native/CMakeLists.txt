@@ -132,14 +132,21 @@ if(PAGMONET_WITH_IPOPT)
         pkg_check_modules(IPOPT REQUIRED ipopt)
         target_compile_definitions(PagmoWrapper PRIVATE PAGMO_WITH_IPOPT)
         if(APPLE)
-            # On macOS Xcode 16+, libm.tbd no longer exists — math is in libSystem.B.
-            # cmake resolves -lm from ipopt's pkg-config to the missing libm.tbd path.
-            list(REMOVE_ITEM IPOPT_LINK_LIBRARIES "-lm" "m")
-            list(FILTER IPOPT_LINK_LIBRARIES EXCLUDE REGEX "libm\\.tbd$|libm\\.dylib$")
+            # On macOS Xcode 16+, cmake resolves -lm (from ipopt.pc) to the full
+            # path of libm.tbd in the Xcode SDK. cmake's Makefile generator adds
+            # libm.tbd as a file dependency; when the file doesn't build, make
+            # fails. Use IPOPT_LDFLAGS (raw pkg-config flags) via target_link_options
+            # so -lm goes straight to the linker without cmake creating a file dep.
+            separate_arguments(_ipopt_ldflags UNIX_COMMAND "${IPOPT_LDFLAGS}")
+            list(FILTER _ipopt_ldflags EXCLUDE REGEX "^-lm$")
+            target_link_options(PagmoWrapper PRIVATE ${_ipopt_ldflags})
+            target_include_directories(PagmoWrapper PRIVATE ${IPOPT_INCLUDE_DIRS})
+            unset(_ipopt_ldflags)
+        else()
+            target_link_libraries(PagmoWrapper PRIVATE ${IPOPT_LINK_LIBRARIES})
+            target_include_directories(PagmoWrapper PRIVATE ${IPOPT_INCLUDE_DIRS})
+            target_link_directories(PagmoWrapper PRIVATE ${IPOPT_LIBRARY_DIRS})
         endif()
-        target_link_libraries(PagmoWrapper PRIVATE ${IPOPT_LINK_LIBRARIES})
-        target_include_directories(PagmoWrapper PRIVATE ${IPOPT_INCLUDE_DIRS})
-        target_link_directories(PagmoWrapper PRIVATE ${IPOPT_LIBRARY_DIRS})
     endif()
 endif()
 
