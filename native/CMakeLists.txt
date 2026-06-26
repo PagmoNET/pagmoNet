@@ -131,6 +131,12 @@ if(PAGMONET_WITH_IPOPT)
         find_package(PkgConfig REQUIRED)
         pkg_check_modules(IPOPT REQUIRED ipopt)
         target_compile_definitions(PagmoWrapper PRIVATE PAGMO_WITH_IPOPT)
+        if(APPLE)
+            # On macOS Xcode 16+, libm.tbd no longer exists — math is in libSystem.B.
+            # cmake resolves -lm from ipopt's pkg-config to the missing libm.tbd path.
+            list(REMOVE_ITEM IPOPT_LINK_LIBRARIES "-lm" "m")
+            list(FILTER IPOPT_LINK_LIBRARIES EXCLUDE REGEX "libm\\.tbd$|libm\\.dylib$")
+        endif()
         target_link_libraries(PagmoWrapper PRIVATE ${IPOPT_LINK_LIBRARIES})
         target_include_directories(PagmoWrapper PRIVATE ${IPOPT_INCLUDE_DIRS})
         target_link_directories(PagmoWrapper PRIVATE ${IPOPT_LIBRARY_DIRS})
