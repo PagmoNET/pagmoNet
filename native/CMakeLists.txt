@@ -37,6 +37,20 @@ endif()
 find_package(Pagmo REQUIRED)
 find_package(Boost REQUIRED COMPONENTS serialization)
 
+if(APPLE)
+    # pagmo2's cmake config records -lm from its build environment. On macOS Xcode 16+,
+    # libm.tbd no longer exists as a separate SDK stub — math is in libSystem.B.
+    # Strip the resolved libm.tbd path from Pagmo::pagmo's interface before cmake
+    # generates Makefile rules that depend on the missing file.
+    get_target_property(_pagmo_iface_libs Pagmo::pagmo INTERFACE_LINK_LIBRARIES)
+    if(_pagmo_iface_libs)
+        list(FILTER _pagmo_iface_libs EXCLUDE REGEX "libm\\.tbd$|libm\\.dylib$|-lm$|^m$")
+        set_target_properties(Pagmo::pagmo PROPERTIES
+            INTERFACE_LINK_LIBRARIES "${_pagmo_iface_libs}")
+    endif()
+    unset(_pagmo_iface_libs)
+endif()
+
 # nloptGenerated.cxx is always compiled; it is empty when NLopt is not available
 # (the SWIG interface guards it with #if defined(PAGMO_WITH_NLOPT)).
 add_library(PagmoWrapper SHARED
