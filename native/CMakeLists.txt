@@ -15,7 +15,7 @@ if(APPLE)
     # linker satisfies through libSystem.B without an explicit file dependency.
     foreach(_lang IN ITEMS C CXX)
         list(FILTER CMAKE_${_lang}_IMPLICIT_LINK_DIRECTORIES
-            EXCLUDE REGEX "[Mm]ac[Oo][Ss].*\\.sdk/usr/lib$")
+            EXCLUDE REGEX "[Mm]ac[Oo][Ss].*\\.sdk/usr/lib")
     endforeach()
     unset(_lang)
 endif()
