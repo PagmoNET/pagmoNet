@@ -5,20 +5,19 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(APPLE)
-    # On macOS Xcode 16+, libm.tbd no longer exists as a standalone SDK stub
-    # (math is merged into libSystem.B). cmake resolves -lm (from pagmo2, Boost,
-    # or IPOPT cmake configs) to the missing full path, creating a Makefile
-    # dependency that fails. Prevent this by ignoring the SDK usr/lib so cmake
-    # can't resolve -lm to libm.tbd from any transitive dependency.
-    execute_process(
-        COMMAND xcrun --show-sdk-path
-        OUTPUT_VARIABLE _sdk_path
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-        ERROR_QUIET)
-    if(_sdk_path)
-        list(APPEND CMAKE_IGNORE_PATH "${_sdk_path}/usr/lib")
-    endif()
-    unset(_sdk_path)
+    # On macOS Xcode 16+, libm.tbd no longer exists as a standalone SDK stub —
+    # math is part of libSystem.B.dylib. cmake's generator resolves -lm (from
+    # pagmo2, Boost, IPOPT, TBB, or any other transitive dependency) to the
+    # full path of libm.tbd via CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES, which are
+    # auto-detected from the compiler's sysroot and bypass CMAKE_IGNORE_PATH.
+    # Strip the SDK usr/lib from both implicit link dir lists so cmake never
+    # resolves -lm to a file path, leaving it as a raw -lm flag that the Apple
+    # linker satisfies through libSystem.B without an explicit file dependency.
+    foreach(_lang IN ITEMS C CXX)
+        list(FILTER CMAKE_${_lang}_IMPLICIT_LINK_DIRECTORIES
+            EXCLUDE REGEX "[Mm]ac[Oo][Ss].*\\.sdk/usr/lib$")
+    endforeach()
+    unset(_lang)
 endif()
 
 # Hide all symbols by default; only PAGMONET_EXPORT-decorated functions are visible.
