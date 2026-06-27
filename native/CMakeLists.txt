@@ -10,14 +10,17 @@ if(APPLE)
     # IPOPT, TBB, or any transitive dep) to the full SDK path of libm.tbd,
     # then the Makefile generator adds it as a file dependency that make can't
     # satisfy. Two complementary mitigations:
-    # 1. CMP0060 OLD: use -l flags for libraries in implicit dirs (not full paths)
-    # 2. Filter SDK usr/lib from implicit link dirs so cmake doesn't find libm.tbd
-    cmake_policy(SET CMP0060 OLD)
+    # Filter the SDK usr/lib from ALL path lists cmake uses to resolve -lm.
+    # cmake searches CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES and also
+    # CMAKE_SYSTEM_LIBRARY_PATH; removing the SDK lib dir from both prevents
+    # cmake from resolving -lm to the missing libm.tbd full path.
     foreach(_lang IN ITEMS C CXX)
         list(FILTER CMAKE_${_lang}_IMPLICIT_LINK_DIRECTORIES
             EXCLUDE REGEX "[Mm]ac[Oo][Ss].*\\.sdk/usr/lib")
     endforeach()
     unset(_lang)
+    list(FILTER CMAKE_SYSTEM_LIBRARY_PATH
+        EXCLUDE REGEX "[Mm]ac[Oo][Ss].*\\.sdk/usr/lib")
 endif()
 
 # Hide all symbols by default; only PAGMONET_EXPORT-decorated functions are visible.
