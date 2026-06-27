@@ -6,22 +6,28 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(APPLE)
     # On macOS Xcode 16+, libm.tbd no longer exists as a standalone SDK stub —
-    # math is in libSystem.B.dylib. cmake 4.x with CMP0060 NEW searches
-    # ${CMAKE_OSX_SYSROOT}/usr/lib unconditionally during Makefile generation
-    # even when all path-list variables are filtered. Add the SDK usr/lib to
-    # CMAKE_IGNORE_PATH (checked by cmake's internal cmFindLibraryHelper) so
-    # the full path to libm.tbd is never resolved and no file dependency is created.
+    # math is in libSystem.B.dylib. Strip -lm/m from ALL cmake variables that
+    # could cause cmake to resolve it to the missing libm.tbd full path.
+    # Use CACHE INTERNAL FORCE so cmake's generator sees our filtered values
+    # instead of the values from compiler detection.
     if(CMAKE_OSX_SYSROOT)
         list(APPEND CMAKE_IGNORE_PATH "${CMAKE_OSX_SYSROOT}/usr/lib")
     endif()
-    # Also filter the SDK usr/lib from ALL path lists cmake uses to resolve -lm.
-    # cmake searches CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES and also
-    # CMAKE_SYSTEM_LIBRARY_PATH; removing the SDK lib dir from both prevents
-    # cmake from resolving -lm to the missing libm.tbd full path.
     foreach(_lang IN ITEMS C CXX)
         list(FILTER CMAKE_${_lang}_IMPLICIT_LINK_DIRECTORIES
             EXCLUDE REGEX "[Mm]ac[Oo][Ss].*\\.sdk/usr/lib")
+        set(CMAKE_${_lang}_IMPLICIT_LINK_DIRECTORIES
+            "${CMAKE_${_lang}_IMPLICIT_LINK_DIRECTORIES}" CACHE INTERNAL "" FORCE)
         list(REMOVE_ITEM CMAKE_${_lang}_IMPLICIT_LINK_LIBRARIES "m")
+        set(CMAKE_${_lang}_IMPLICIT_LINK_LIBRARIES
+            "${CMAKE_${_lang}_IMPLICIT_LINK_LIBRARIES}" CACHE INTERNAL "" FORCE)
+        # Also strip from STANDARD_LIBRARIES (AppleClang may hardcode -lm here)
+        string(REGEX REPLACE "(^| )-lm( |$)" " " CMAKE_${_lang}_STANDARD_LIBRARIES
+            "${CMAKE_${_lang}_STANDARD_LIBRARIES}")
+        string(STRIP "${CMAKE_${_lang}_STANDARD_LIBRARIES}"
+            CMAKE_${_lang}_STANDARD_LIBRARIES)
+        set(CMAKE_${_lang}_STANDARD_LIBRARIES
+            "${CMAKE_${_lang}_STANDARD_LIBRARIES}" CACHE INTERNAL "" FORCE)
     endforeach()
     unset(_lang)
     list(FILTER CMAKE_SYSTEM_LIBRARY_PATH
