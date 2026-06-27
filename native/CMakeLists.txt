@@ -4,6 +4,23 @@ project(PagmoWrapper VERSION 1.0.0)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+if(APPLE)
+    # On macOS Xcode 16+, libm.tbd no longer exists as a standalone SDK stub
+    # (math is merged into libSystem.B). cmake resolves -lm (from pagmo2, Boost,
+    # or IPOPT cmake configs) to the missing full path, creating a Makefile
+    # dependency that fails. Prevent this by ignoring the SDK usr/lib so cmake
+    # can't resolve -lm to libm.tbd from any transitive dependency.
+    execute_process(
+        COMMAND xcrun --show-sdk-path
+        OUTPUT_VARIABLE _sdk_path
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET)
+    if(_sdk_path)
+        list(APPEND CMAKE_IGNORE_PATH "${_sdk_path}/usr/lib")
+    endif()
+    unset(_sdk_path)
+endif()
+
 # Hide all symbols by default; only PAGMONET_EXPORT-decorated functions are visible.
 # This matches the Windows __declspec(dllexport) model — no unintended ABI leakage.
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
