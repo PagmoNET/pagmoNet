@@ -6,13 +6,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(APPLE)
     # On macOS Xcode 16+, libm.tbd no longer exists as a standalone SDK stub —
-    # math is part of libSystem.B.dylib. cmake's generator resolves -lm (from
-    # pagmo2, Boost, IPOPT, TBB, or any other transitive dependency) to the
-    # full path of libm.tbd via CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES, which are
-    # auto-detected from the compiler's sysroot and bypass CMAKE_IGNORE_PATH.
-    # Strip the SDK usr/lib from both implicit link dir lists so cmake never
-    # resolves -lm to a file path, leaving it as a raw -lm flag that the Apple
-    # linker satisfies through libSystem.B without an explicit file dependency.
+    # math is in libSystem.B.dylib. cmake resolves -lm (from pagmo2, Boost,
+    # IPOPT, TBB, or any transitive dep) to the full SDK path of libm.tbd,
+    # then the Makefile generator adds it as a file dependency that make can't
+    # satisfy. Two complementary mitigations:
+    # 1. CMP0060 OLD: use -l flags for libraries in implicit dirs (not full paths)
+    # 2. Filter SDK usr/lib from implicit link dirs so cmake doesn't find libm.tbd
+    cmake_policy(SET CMP0060 OLD)
     foreach(_lang IN ITEMS C CXX)
         list(FILTER CMAKE_${_lang}_IMPLICIT_LINK_DIRECTORIES
             EXCLUDE REGEX "[Mm]ac[Oo][Ss].*\\.sdk/usr/lib")
