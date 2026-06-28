@@ -105,10 +105,11 @@ try {
         $vcpkgExe       = Join-Path $env:VCPKG_ROOT "vcpkg.exe"
         $vcpkgToolchain = Join-Path $env:VCPKG_ROOT "scripts/buildsystems/vcpkg.cmake"
 
-        # MUMPS (required for IPOPT) is a Fortran library distributed via MSYS2/MinGW64.
-        # MSYS2's static archives (.a) cannot be linked by MSVC's link.exe — use MinGW.
-        # The caller must have C:\msys64\mingw64\bin on PATH before invoking this script.
-        $triplet  = if ($WithIpopt) { "x64-mingw-static" } else { "x64-windows-static-md" }
+        # When IPOPT_PREFIX is set, conda-forge IPOPT is available as a pre-built
+        # MSVC DLL — use the standard MSVC triplet. Otherwise fall back to the legacy
+        # MinGW/MSYS2 path (requires C:\msys64\mingw64\bin on PATH).
+        $useCondaIPOPT = $WithIpopt -and $env:IPOPT_PREFIX
+        $triplet  = if ($WithIpopt -and -not $useCondaIPOPT) { "x64-mingw-static" } else { "x64-windows-static-md" }
         $features = if ($WithIpopt) { "nlopt,ipopt" } else { "nlopt" }
 
         Write-Host "==> vcpkg install pagmo2[$features]:$triplet"
@@ -122,8 +123,8 @@ try {
         $cmakeCache = Join-Path $buildDir "CMakeCache.txt"
         if (Test-Path $cmakeCache) { Remove-Item -Force $cmakeCache }
 
-        if ($WithIpopt) {
-            # MinGW build: gcc/g++ from MSYS2 MinGW64 must be on PATH.
+        if ($WithIpopt -and -not $useCondaIPOPT) {
+            # Legacy MinGW build: gcc/g++ from MSYS2 MinGW64 must be on PATH.
             # -static-libgcc/-static-libstdc++ embed the GCC/libstdc++ runtime into
             # the DLL; libgfortran (from MUMPS) still loads dynamically from MSYS2.
             & cmake `
@@ -136,7 +137,7 @@ try {
                 "-DCMAKE_SHARED_LINKER_FLAGS=-static-libgcc -static-libstdc++" `
                 "-DPAGMONET_WITH_NLOPT=ON" "-DPAGMONET_WITH_IPOPT=ON"
         } else {
-            # MSVC build for the base library (no IPOPT).
+            # MSVC build: standard library (no IPOPT) or conda-forge IPOPT.
             $vsWhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
             if (-not (Test-Path $vsWhere)) { throw "vswhere.exe not found. Install Visual Studio Build Tools." }
             $vsInstallPath = & $vsWhere -latest -property installationPath
@@ -150,14 +151,17 @@ try {
                     [System.Environment]::SetEnvironmentVariable($Matches[1], $Matches[2], 'Process')
                 }
             }
-            & cmake `
-                "-B$buildDir" "-S$nativeDir" `
-                "-G" "Ninja" `
-                "-DCMAKE_BUILD_TYPE=$Configuration" `
-                "-DCMAKE_TOOLCHAIN_FILE=$vcpkgToolchain" `
-                "-DVCPKG_TARGET_TRIPLET=$triplet" `
-                "-DVCPKG_OVERLAY_TRIPLETS=$tripletOverlay" `
+            $cmakeArgs = @(
+                "-B$buildDir", "-S$nativeDir",
+                "-G", "Ninja",
+                "-DCMAKE_BUILD_TYPE=$Configuration",
+                "-DCMAKE_TOOLCHAIN_FILE=$vcpkgToolchain",
+                "-DVCPKG_TARGET_TRIPLET=$triplet",
+                "-DVCPKG_OVERLAY_TRIPLETS=$tripletOverlay",
                 "-DPAGMONET_WITH_NLOPT=ON"
+            )
+            if ($useCondaIPOPT) { $cmakeArgs += "-DPAGMONET_WITH_IPOPT=ON" }
+            & cmake @cmakeArgs
         }
         if ($LASTEXITCODE -ne 0) { throw "cmake configure failed ($LASTEXITCODE)." }
         & cmake --build $buildDir --config $Configuration

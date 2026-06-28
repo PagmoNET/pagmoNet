@@ -5,31 +5,34 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(APPLE)
-    # On macOS Xcode 16+, libm.tbd no longer exists as a standalone SDK stub —
-    # math is in libSystem.B.dylib. Strip -lm/m from ALL cmake variables that
-    # could cause cmake to resolve it to the missing libm.tbd full path.
-    # Use CACHE INTERNAL FORCE so cmake's generator sees our filtered values
-    # instead of the values from compiler detection.
-    if(CMAKE_OSX_SYSROOT)
-        list(APPEND CMAKE_IGNORE_PATH "${CMAKE_OSX_SYSROOT}/usr/lib")
-    endif()
+    # Xcode 16.4 removed libm.tbd from the SDK. cmake 4.x (CMP0060 NEW) resolves
+    # -lm to a full path and adds that path as a Makefile file prerequisite; if the
+    # file is missing make fails with "No rule to make target libm.tbd".
+    # Strategy: create a minimal valid TBD stub in the build tree and prepend its
+    # directory to CMAKE_*_IMPLICIT_LINK_DIRECTORIES so cmake finds our stub FIRST.
+    # The stub exists -> make's prereq check passes -> linker resolves to /usr/lib/libm.dylib.
+    file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/_libm_stub")
+    file(WRITE "${CMAKE_BINARY_DIR}/_libm_stub/libm.tbd"
+        "--- !tapi-tbd\ntbd-version: 4\ntargets: [ arm64-apple-macos14.0, x86_64-apple-macos14.0 ]\ninstall-name: /usr/lib/libm.dylib\n...\n")
     foreach(_lang IN ITEMS C CXX)
+        list(INSERT CMAKE_${_lang}_IMPLICIT_LINK_DIRECTORIES 0 "${CMAKE_BINARY_DIR}/_libm_stub")
         list(FILTER CMAKE_${_lang}_IMPLICIT_LINK_DIRECTORIES
-            EXCLUDE REGEX "[Mm]ac[Oo][Ss].*\\.sdk/usr/lib")
+            EXCLUDE REGEX "[Mm]ac[Oo][Ss].*\\.sdk/usr/lib$")
         set(CMAKE_${_lang}_IMPLICIT_LINK_DIRECTORIES
             "${CMAKE_${_lang}_IMPLICIT_LINK_DIRECTORIES}" CACHE INTERNAL "" FORCE)
         list(REMOVE_ITEM CMAKE_${_lang}_IMPLICIT_LINK_LIBRARIES "m")
         set(CMAKE_${_lang}_IMPLICIT_LINK_LIBRARIES
             "${CMAKE_${_lang}_IMPLICIT_LINK_LIBRARIES}" CACHE INTERNAL "" FORCE)
-        # Also strip from STANDARD_LIBRARIES (AppleClang may hardcode -lm here)
         string(REGEX REPLACE "(^| )-lm( |$)" " " CMAKE_${_lang}_STANDARD_LIBRARIES
             "${CMAKE_${_lang}_STANDARD_LIBRARIES}")
-        string(STRIP "${CMAKE_${_lang}_STANDARD_LIBRARIES}"
-            CMAKE_${_lang}_STANDARD_LIBRARIES)
+        string(STRIP "${CMAKE_${_lang}_STANDARD_LIBRARIES}" CMAKE_${_lang}_STANDARD_LIBRARIES)
         set(CMAKE_${_lang}_STANDARD_LIBRARIES
             "${CMAKE_${_lang}_STANDARD_LIBRARIES}" CACHE INTERNAL "" FORCE)
     endforeach()
     unset(_lang)
+    if(CMAKE_OSX_SYSROOT)
+        list(APPEND CMAKE_IGNORE_PATH "${CMAKE_OSX_SYSROOT}/usr/lib")
+    endif()
     list(FILTER CMAKE_SYSTEM_LIBRARY_PATH
         EXCLUDE REGEX "[Mm]ac[Oo][Ss].*\\.sdk/usr/lib")
 endif()
@@ -58,10 +61,10 @@ if(NOT TARGET pagmo::IPOPT::libipopt)
         else()
             add_library(pagmo::IPOPT::libipopt INTERFACE IMPORTED)
         endif()
-        unset(_pagmo_ipopt_lib)
     else()
         add_library(pagmo::IPOPT::libipopt INTERFACE IMPORTED)
     endif()
+    unset(_pagmo_ipopt_lib)
 endif()
 
 find_package(Pagmo REQUIRED)
@@ -150,27 +153,13 @@ if(PAGMONET_WITH_IPOPT)
         target_compile_definitions(PagmoWrapper PRIVATE PAGMO_WITH_IPOPT)
         target_link_libraries(PagmoWrapper PRIVATE Ipopt::Ipopt)
     elseif(WIN32)
+        # conda-forge IPOPT is a pre-built DLL that bundles its own BLAS (OpenBLAS).
+        # No MKL or separate BLAS linking needed — ipopt.dll handles it internally.
         find_path(IPOPT_INCLUDE_DIR NAMES IpIpoptApplication.hpp PATH_SUFFIXES coin-or)
         target_compile_definitions(PagmoWrapper PRIVATE PAGMO_WITH_IPOPT)
         if(IPOPT_INCLUDE_DIR)
             target_include_directories(PagmoWrapper PRIVATE "${IPOPT_INCLUDE_DIR}")
         endif()
-        # ipopt.lib calls BLAS/LAPACK via Fortran symbol names (e.g. ddot_, dsyev_).
-        # These are not in ipopt.lib itself; they come from the separate static libs.
-        # pagmo::IPOPT::libipopt only exposes ipopt.lib, so we must link the full
-        # BLAS/LAPACK chain explicitly here.
-        # CLAPACK (lapack.lib) calls BLAS externally; OpenBLAS defines DllMain
-        # and cannot be statically linked into a DLL. Intel MKL provides both
-        # BLAS and LAPACK as truly static libraries with no DllMain conflict.
-        # Use the sequential LP64 variant (no OpenMP dependency).
-        find_library(PAGMONET_MKL_LP64 NAMES mkl_intel_lp64 REQUIRED)
-        find_library(PAGMONET_MKL_SEQ  NAMES mkl_sequential  REQUIRED)
-        find_library(PAGMONET_MKL_CORE NAMES mkl_core        REQUIRED)
-        target_link_libraries(PagmoWrapper PRIVATE
-            "${PAGMONET_MKL_LP64}"
-            "${PAGMONET_MKL_SEQ}"
-            "${PAGMONET_MKL_CORE}"
-        )
     else()
         find_package(PkgConfig REQUIRED)
         pkg_check_modules(IPOPT REQUIRED ipopt)
