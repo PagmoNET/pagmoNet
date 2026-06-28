@@ -4,38 +4,6 @@ project(PagmoWrapper VERSION 1.0.0)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-if(APPLE)
-    # Xcode 16.4 removed libm.tbd from the SDK. cmake 4.x (CMP0060 NEW) resolves
-    # -lm to a full path and adds that path as a Makefile file prerequisite; if the
-    # file is missing make fails with "No rule to make target libm.tbd".
-    # Strategy: create a minimal valid TBD stub in the build tree and prepend its
-    # directory to CMAKE_*_IMPLICIT_LINK_DIRECTORIES so cmake finds our stub FIRST.
-    # The stub exists -> make's prereq check passes -> linker resolves to /usr/lib/libm.dylib.
-    file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/_libm_stub")
-    file(WRITE "${CMAKE_BINARY_DIR}/_libm_stub/libm.tbd"
-        "--- !tapi-tbd\ntbd-version: 4\ntargets: [ arm64-apple-macos14.0, x86_64-apple-macos14.0 ]\ninstall-name: /usr/lib/libm.dylib\n...\n")
-    foreach(_lang IN ITEMS C CXX)
-        list(INSERT CMAKE_${_lang}_IMPLICIT_LINK_DIRECTORIES 0 "${CMAKE_BINARY_DIR}/_libm_stub")
-        list(FILTER CMAKE_${_lang}_IMPLICIT_LINK_DIRECTORIES
-            EXCLUDE REGEX "[Mm]ac[Oo][Ss].*\\.sdk/usr/lib$")
-        set(CMAKE_${_lang}_IMPLICIT_LINK_DIRECTORIES
-            "${CMAKE_${_lang}_IMPLICIT_LINK_DIRECTORIES}" CACHE INTERNAL "" FORCE)
-        list(REMOVE_ITEM CMAKE_${_lang}_IMPLICIT_LINK_LIBRARIES "m")
-        set(CMAKE_${_lang}_IMPLICIT_LINK_LIBRARIES
-            "${CMAKE_${_lang}_IMPLICIT_LINK_LIBRARIES}" CACHE INTERNAL "" FORCE)
-        string(REGEX REPLACE "(^| )-lm( |$)" " " CMAKE_${_lang}_STANDARD_LIBRARIES
-            "${CMAKE_${_lang}_STANDARD_LIBRARIES}")
-        string(STRIP "${CMAKE_${_lang}_STANDARD_LIBRARIES}" CMAKE_${_lang}_STANDARD_LIBRARIES)
-        set(CMAKE_${_lang}_STANDARD_LIBRARIES
-            "${CMAKE_${_lang}_STANDARD_LIBRARIES}" CACHE INTERNAL "" FORCE)
-    endforeach()
-    unset(_lang)
-    if(CMAKE_OSX_SYSROOT)
-        list(APPEND CMAKE_IGNORE_PATH "${CMAKE_OSX_SYSROOT}/usr/lib")
-    endif()
-    list(FILTER CMAKE_SYSTEM_LIBRARY_PATH
-        EXCLUDE REGEX "[Mm]ac[Oo][Ss].*\\.sdk/usr/lib")
-endif()
 
 # Hide all symbols by default; only PAGMONET_EXPORT-decorated functions are visible.
 # This matches the Windows __declspec(dllexport) model — no unintended ABI leakage.
