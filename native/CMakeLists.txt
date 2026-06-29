@@ -151,7 +151,26 @@ if(PAGMONET_WITH_IPOPT)
     find_package(Ipopt CONFIG QUIET)
     if(TARGET Ipopt::Ipopt)
         target_compile_definitions(PagmoWrapper PRIVATE PAGMO_WITH_IPOPT)
-        target_link_libraries(PagmoWrapper PRIVATE Ipopt::Ipopt)
+        if(APPLE)
+            # Pagmo::pagmo already links libipopt transitively through the
+            # pre-created pagmo::IPOPT::libipopt target above, and ld records it
+            # with the dylib's real install name (@rpath/libipopt.3.dylib). The
+            # overlay port's macOS ipopt-config.cmake points Ipopt::Ipopt at the
+            # dylib-copied-as-a-.a, so linking Ipopt::Ipopt as well adds a SECOND
+            # libipopt load command under a different name (@rpath/libipopt.a).
+            # ld dedupes load commands by install name, but these two names differ
+            # so both survive -- and the @rpath/libipopt.a one is unresolvable at
+            # runtime, breaking dlopen of the wrapper. So on macOS take only
+            # Ipopt::Ipopt's include dirs and let the single transitive link
+            # provide the library.
+            get_target_property(_ipopt_inc Ipopt::Ipopt INTERFACE_INCLUDE_DIRECTORIES)
+            if(_ipopt_inc)
+                target_include_directories(PagmoWrapper PRIVATE ${_ipopt_inc})
+            endif()
+            unset(_ipopt_inc)
+        else()
+            target_link_libraries(PagmoWrapper PRIVATE Ipopt::Ipopt)
+        endif()
     elseif(WIN32)
         # conda-forge IPOPT is a pre-built DLL that bundles its own BLAS (OpenBLAS).
         # No MKL or separate BLAS linking needed — ipopt.dll handles it internally.
@@ -185,19 +204,4 @@ endif()
 
 if(PAGMONET_WITH_SNOPT7)
     target_compile_definitions(PagmoWrapper PRIVATE PAGMO_WITH_SNOPT7)
-endif()
-
-if(APPLE AND PAGMONET_WITH_IPOPT)
-    # The coin-or-ipopt bridge port copies conda's libipopt.dylib to a "libipopt.a"
-    # name so find_library can locate it under the static vcpkg triplet (which only
-    # searches .a). ld links it correctly (it reads Mach-O magic, not the extension),
-    # but it records a runtime load command for "@rpath/libipopt.a" -- a name that
-    # does not exist at load time, so dlopen of the wrapper fails with
-    # DllNotFoundException. The real dynamic IPOPT (@rpath/libipopt.3.dylib) is also
-    # linked in, so rewrite the bogus .a dependency to point at it. This makes the
-    # shipped dylib loadable, not just CI.
-    add_custom_command(TARGET PagmoWrapper POST_BUILD
-        COMMAND install_name_tool -change @rpath/libipopt.a @rpath/libipopt.3.dylib
-                $<TARGET_FILE:PagmoWrapper>
-        COMMENT "Rewriting bogus @rpath/libipopt.a dependency to @rpath/libipopt.3.dylib")
 endif()
