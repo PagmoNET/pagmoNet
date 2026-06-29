@@ -186,3 +186,18 @@ endif()
 if(PAGMONET_WITH_SNOPT7)
     target_compile_definitions(PagmoWrapper PRIVATE PAGMO_WITH_SNOPT7)
 endif()
+
+if(APPLE AND PAGMONET_WITH_IPOPT)
+    # The coin-or-ipopt bridge port copies conda's libipopt.dylib to a "libipopt.a"
+    # name so find_library can locate it under the static vcpkg triplet (which only
+    # searches .a). ld links it correctly (it reads Mach-O magic, not the extension),
+    # but it records a runtime load command for "@rpath/libipopt.a" -- a name that
+    # does not exist at load time, so dlopen of the wrapper fails with
+    # DllNotFoundException. The real dynamic IPOPT (@rpath/libipopt.3.dylib) is also
+    # linked in, so rewrite the bogus .a dependency to point at it. This makes the
+    # shipped dylib loadable, not just CI.
+    add_custom_command(TARGET PagmoWrapper POST_BUILD
+        COMMAND install_name_tool -change @rpath/libipopt.a @rpath/libipopt.3.dylib
+                $<TARGET_FILE:PagmoWrapper>
+        COMMENT "Rewriting bogus @rpath/libipopt.a dependency to @rpath/libipopt.3.dylib")
+endif()
