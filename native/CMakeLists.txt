@@ -137,6 +137,20 @@ option(PAGMONET_WITH_SNOPT7 "Build PagmoWrapper with SNOPT7 support" OFF)
 
 if(PAGMONET_WITH_NLOPT)
     find_package(NLopt CONFIG REQUIRED)
+    if(APPLE)
+        # NLopt is a math library; its cmake config records -lm the same way pagmo2
+        # does. On Xcode 16.4+ that resolves to the removed libm.tbd SDK stub, which
+        # cmake then emits as a Makefile file prerequisite -> "No rule to make target
+        # .../MacOSX.sdk/usr/lib/libm.tbd". Strip it here for the same reason as the
+        # Pagmo::pagmo strip above: math lives in libSystem, so the link still succeeds.
+        get_target_property(_nlopt_iface_libs NLopt::nlopt INTERFACE_LINK_LIBRARIES)
+        if(_nlopt_iface_libs)
+            list(FILTER _nlopt_iface_libs EXCLUDE REGEX "libm\\.tbd$|libm\\.dylib$|-lm$|^m$")
+            set_target_properties(NLopt::nlopt PROPERTIES
+                INTERFACE_LINK_LIBRARIES "${_nlopt_iface_libs}")
+        endif()
+        unset(_nlopt_iface_libs)
+    endif()
     target_compile_definitions(PagmoWrapper PRIVATE PAGMO_WITH_NLOPT)
     target_link_libraries(PagmoWrapper PRIVATE NLopt::nlopt)
 endif()
