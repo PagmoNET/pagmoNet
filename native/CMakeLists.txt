@@ -70,19 +70,9 @@ endif()
 find_package(Pagmo REQUIRED)
 find_package(Boost REQUIRED COMPONENTS serialization)
 
-if(APPLE)
-    # pagmo2's cmake config records -lm from its build environment. On macOS Xcode 16+,
-    # libm.tbd no longer exists as a separate SDK stub — math is in libSystem.B.
-    # Strip the resolved libm.tbd path from Pagmo::pagmo's interface before cmake
-    # generates Makefile rules that depend on the missing file.
-    get_target_property(_pagmo_iface_libs Pagmo::pagmo INTERFACE_LINK_LIBRARIES)
-    if(_pagmo_iface_libs)
-        list(FILTER _pagmo_iface_libs EXCLUDE REGEX "libm\\.tbd$|libm\\.dylib$|-lm$|^m$")
-        set_target_properties(Pagmo::pagmo PROPERTIES
-            INTERFACE_LINK_LIBRARIES "${_pagmo_iface_libs}")
-    endif()
-    unset(_pagmo_iface_libs)
-endif()
+# NOTE: the macOS libm.tbd strip for Pagmo::pagmo / NLopt::nlopt / Ipopt::Ipopt is a
+# single generic sweep at the end of this file (after the optional-solver blocks import
+# those targets). See the "Xcode 16.4+ libm.tbd" block below.
 
 # nloptGenerated.cxx is always compiled; it is empty when NLopt is not available
 # (the SWIG interface guards it with #if defined(PAGMO_WITH_NLOPT)).
@@ -137,20 +127,6 @@ option(PAGMONET_WITH_SNOPT7 "Build PagmoWrapper with SNOPT7 support" OFF)
 
 if(PAGMONET_WITH_NLOPT)
     find_package(NLopt CONFIG REQUIRED)
-    if(APPLE)
-        # NLopt is a math library; its cmake config records -lm the same way pagmo2
-        # does. On Xcode 16.4+ that resolves to the removed libm.tbd SDK stub, which
-        # cmake then emits as a Makefile file prerequisite -> "No rule to make target
-        # .../MacOSX.sdk/usr/lib/libm.tbd". Strip it here for the same reason as the
-        # Pagmo::pagmo strip above: math lives in libSystem, so the link still succeeds.
-        get_target_property(_nlopt_iface_libs NLopt::nlopt INTERFACE_LINK_LIBRARIES)
-        if(_nlopt_iface_libs)
-            list(FILTER _nlopt_iface_libs EXCLUDE REGEX "libm\\.tbd$|libm\\.dylib$|-lm$|^m$")
-            set_target_properties(NLopt::nlopt PROPERTIES
-                INTERFACE_LINK_LIBRARIES "${_nlopt_iface_libs}")
-        endif()
-        unset(_nlopt_iface_libs)
-    endif()
     target_compile_definitions(PagmoWrapper PRIVATE PAGMO_WITH_NLOPT)
     target_link_libraries(PagmoWrapper PRIVATE NLopt::nlopt)
 endif()
@@ -218,4 +194,35 @@ endif()
 
 if(PAGMONET_WITH_SNOPT7)
     target_compile_definitions(PagmoWrapper PRIVATE PAGMO_WITH_SNOPT7)
+endif()
+
+if(APPLE)
+    # Xcode 16.4+ removed libm.tbd from the SDK. Any imported target whose interface
+    # link libraries reference libm -- as "m", "-lm", or a path cmake resolved to the
+    # now-missing libm.tbd / libm.dylib -- makes cmake emit that absolute path as a
+    # Makefile file prerequisite: "No rule to make target libm.tbd". Math lives in
+    # libSystem.B on macOS (always linked), so strip every such reference from ALL
+    # imported targets in this directory.
+    #
+    # One generic sweep is deliberately used instead of per-target strips: the latter
+    # silently miss a target the moment a new one is linked (exactly how NLopt::nlopt
+    # slipped through and broke the base macOS build). This mirrors the PagmoNet4j
+    # `.ipopt` superset's pagmoWrapper/CMakeLists.txt technique so both native builds
+    # stay in parity.
+    #
+    # Gated on APPLE because on Linux "-lm"/"m" is a real, required separate library;
+    # stripping it there would break the IPOPT link. Placed after the optional-solver
+    # blocks so NLopt::nlopt / Ipopt::Ipopt are already imported -- the mutated property
+    # is read at generate time, after the target_link_libraries calls above.
+    get_property(_imported_tgts DIRECTORY PROPERTY IMPORTED_TARGETS)
+    foreach(_tgt IN LISTS _imported_tgts)
+        get_target_property(_iface_libs ${_tgt} INTERFACE_LINK_LIBRARIES)
+        if(_iface_libs)
+            list(FILTER _iface_libs EXCLUDE REGEX "libm\\.tbd$|libm\\.dylib$|^-lm$|^m$|/usr/lib/libm")
+            set_target_properties(${_tgt} PROPERTIES INTERFACE_LINK_LIBRARIES "${_iface_libs}")
+        endif()
+    endforeach()
+    unset(_iface_libs)
+    unset(_imported_tgts)
+    unset(_tgt)
 endif()
