@@ -23,12 +23,24 @@ if (-not $swigExe) {
     throw "SWIG executable not found. Set SWIG_EXE, set SWIG_HOME, or add swig to PATH."
 }
 
-$repoRoot = Resolve-Path (Join-Path $PSScriptRoot ".")
-$swigSrc  = Join-Path $repoRoot "pagmoNet/swig"
-$nativeSrc = Join-Path $repoRoot "pagmoNet/native"
+$repoRoot = Resolve-Path (Join-Path $PSScriptRoot ".")    # pagmo.NET/
+$monoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")   # pagmoNet/ root (monorepo)
+
+# Prefer the monorepo root swig/native dirs; fall back to the legacy nested
+# submodule path for standalone pagmo.NET checkouts.
+$swigSrc = if (Test-Path (Join-Path $monoRoot "swig")) {
+    Join-Path $monoRoot "swig"
+} else {
+    Join-Path $repoRoot "pagmoNet/swig"
+}
+$nativeSrc = if (Test-Path (Join-Path $monoRoot "native")) {
+    Join-Path $monoRoot "native"
+} else {
+    Join-Path $repoRoot "pagmoNet/native"
+}
 $csOut    = Join-Path $repoRoot "Pagmo.NET/pygmoWrappers"
-$wrapCxx  = Join-Path $repoRoot "pagmoNet/native/GeneratedWrappers.cxx"
-$wrapH    = Join-Path $repoRoot "pagmoNet/native/PagmoNETSwigInterface_wrap.h"
+$wrapCxx  = Join-Path $nativeSrc "GeneratedWrappers.cxx"
+$wrapH    = Join-Path $nativeSrc "PagmoNETSwigInterface_wrap.h"
 
 # Ensure output directory exists
 if (Test-Path $csOut) { Remove-Item -Recurse -Force $csOut }
