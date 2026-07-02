@@ -1,0 +1,14 @@
+{
+  "name": "coin-or-ipopt",
+  "version-date": "2023-02-01",
+  "port-version": 11,
+  "description": "IPOPT NLP solver — bridge port (conda-forge) on macOS/Windows, source build on Linux",
+  "homepage": "https://github.com/coin-or/Ipopt",
+  "license": "EPL-2.0",
+  "dependencies": [
+    { "name": "coinutils",    "platform": "linux" },
+    { "name": "coin-or-mumps","platform": "linux" },
+    { "name": "lapack",       "platform": "linux" },
+    { "name": "openblas",     "platform": "linux" }
+  ]
+}

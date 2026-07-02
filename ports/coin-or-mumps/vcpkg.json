@@ -1,0 +1,6 @@
+{
+  "name": "coin-or-mumps",
+  "version": "1.0.0",
+  "description": "Bridge port: provides coinmumps pkg-config entry pointing to system-installed MUMPS. Requires: apt install libmumps-dev (Linux), brew install mumps (macOS), or pacman -S mingw-w64-x86_64-mumps (Windows/MSYS2).",
+  "license": "MIT"
+}
