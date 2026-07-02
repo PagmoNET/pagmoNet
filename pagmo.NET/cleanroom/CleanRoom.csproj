@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Throwaway consumer used by the release workflow's clean-room gate. It references the
+    *published-shaped* Pagmo.NET .nupkg from a local feed (see the workflow, which writes
+    a nuget.config with <clear/> + the local feed and runs `dotnet add package`), then
+    runs one NLopt solve. The PackageReference is added at job time so the version always
+    matches the artifact under test. Mirrors the Pagmo.NET.Ipopt clean-room fixture.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Platforms>x64</Platforms>
+    <!-- The workflow writes a nuget.config next to this project with <clear/> + the
+         local feed, so restore only ever sees the package under test. -->
+  </PropertyGroup>
+
+</Project>

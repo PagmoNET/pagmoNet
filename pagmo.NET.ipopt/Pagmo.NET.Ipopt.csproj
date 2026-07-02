@@ -1,0 +1,125 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Pagmo.NET.Ipopt is a SELF-SUFFICIENT SUPERSET of Pagmo.NET.
+
+    SWIG regenerates the entire binding surface as one unit, so an IPOPT-enabled
+    package necessarily redefines every `pagmo.*` type that the base package
+    defines. There is therefore no way to layer IPOPT on top of a *published*
+    Pagmo.NET assembly (that was the old, broken "pure C# add-on" design).
+
+    Instead this project compiles the base Pagmo.NET C# sources (linked from the
+    pagmo.NET submodule) together with the IPOPT-enabled SWIG bindings and the
+    IPOPT ergonomic layer (extensions/ipopt.cs) into a single assembly, and ships
+    its own IPOPT-enabled native library. Consumers reference EITHER Pagmo.NET OR
+    Pagmo.NET.Ipopt — never both. buildTransitive/Pagmo.NET.Ipopt.targets enforces
+    that with a clear build error.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- Version comes from ./Directory.Build.props (single source); CI overrides via -p:Version=. -->
+    <PackageId>Pagmo.NET.Ipopt</PackageId>
+    <Description>Pagmo.NET with the IPOPT (Interior Point OPTimizer) nonlinear solver bundled. Drop-in superset of Pagmo.NET — reference this OR Pagmo.NET, not both.</Description>
+    <PackageLicenseExpression>LGPL-2.1-or-later</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/samthegliderpilot/pagmo.NET.ipopt</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/samthegliderpilot/pagmo.NET.ipopt</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <Authors>samthegliderpilot</Authors>
+    <Copyright>Copyright © samthegliderpilot</Copyright>
+    <PackageTags>ipopt;optimization;nonlinear;constrained;gradient;pagmo;pagmo2</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <NoWarn>$(NoWarn);CS8981;CS1591</NoWarn>
+    <Platforms>x64</Platforms>
+
+    <!-- Native build output produced by pagmo.NET/scripts/build-native.ps1 -->
+    <PagmoWrapperNativeDir>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\..\native'))</PagmoWrapperNativeDir>
+  </PropertyGroup>
+
+  <!-- Activate IPOPT support once the IPOPT-enabled SWIG bindings are present.
+       (createSwigWrappersAndPlaceThem / the CI swig step generates ipopt.cs into pygmoWrappers.) -->
+  <PropertyGroup Condition="Exists('$(MSBuildProjectDirectory)\..\pagmo.NET\Pagmo.NET\pygmoWrappers\ipopt.cs')">
+    <DefineConstants>$(DefineConstants);PAGMO_WITH_IPOPT</DefineConstants>
+  </PropertyGroup>
+
+  <!-- Keep the adjacent project dirs and tests out of the default source glob; we re-add the
+       exact base sources we want below. -->
+  <ItemGroup>
+    <Compile Remove="Tests\**" />
+    <Compile Remove="cleanroom\**" />
+  </ItemGroup>
+
+  <!-- Base Pagmo.NET sources compiled directly into this assembly (superset model). -->
+  <ItemGroup>
+    <Compile Include="..\pagmo.NET\Pagmo.NET\ProblemExtensions.cs" />
+    <Compile Include="..\pagmo.NET\Pagmo.NET\pagmoExtensions\**\*.cs" />
+    <Compile Include="..\pagmo.NET\Pagmo.NET\pygmoWrappers\**\*.cs" />
+  </ItemGroup>
+  <!-- extensions/ipopt.cs (the IPOPT ergonomic layer) is picked up by the default glob. -->
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+    <None Include="LICENSE" Pack="true" PackagePath="\" />
+    <None Include="NOTICE" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <!-- Double-reference guard: imported into the consumer's build via buildTransitive. -->
+  <ItemGroup>
+    <None Include="buildTransitive\Pagmo.NET.Ipopt.targets" Pack="true" PackagePath="buildTransitive\" />
+  </ItemGroup>
+
+  <!-- ── Native packaging (IPOPT-enabled, self-contained) ──────────────────────
+       Dynamic IPOPT dependency dylibs/DLLs are staged alongside the wrapper by
+       scripts/bundle-native-deps.ps1 in the publish workflow; everything in the
+       native output dir is packed so those deps travel with the wrapper. -->
+
+  <!-- Multi-RID pack mode (release): the publish workflow builds + bundles each
+       platform's self-contained native closure on that platform, lays them out as
+       runtimes/<rid>/native/* under $(PagmoNativePackDir), and this single glob packs
+       them all into one cross-platform package. When set, it supersedes the per-OS
+       local items below (which exist for single-platform local dev/test packing). -->
+  <ItemGroup Condition="'$(PagmoNativePackDir)' != ''">
+    <None Include="$(PagmoNativePackDir)\**\*" Pack="true" PackagePath="%(RecursiveDir)" />
+  </ItemGroup>
+
+  <!-- Windows: PagmoWrapper.dll (+ bundled libgfortran etc.) -->
+  <ItemGroup Condition="'$(PagmoNativePackDir)' == '' And '$(OS)' == 'Windows_NT' And Exists('$(PagmoWrapperNativeDir)\win-build\PagmoWrapper.dll')">
+    <None Include="$(PagmoWrapperNativeDir)\win-build\PagmoWrapper.dll"
+          Pack="true"
+          PackagePath="runtimes/win-x64/native/" />
+  </ItemGroup>
+
+  <!-- Linux: libPagmoWrapper.so (IPOPT statically linked; self-contained). -->
+  <ItemGroup Condition="'$(PagmoNativePackDir)' == '' And '$(OS)' != 'Windows_NT' And Exists('$(PagmoWrapperNativeDir)/build/libPagmoWrapper.so')">
+    <None Include="$(PagmoWrapperNativeDir)/build/libPagmoWrapper.so"
+          Pack="true"
+          PackagePath="runtimes/linux-x64/native/libPagmoWrapper.so" />
+  </ItemGroup>
+
+  <!-- macOS: libPagmoWrapper.dylib (+ bundled IPOPT/MUMPS/OpenBLAS/gfortran).
+       The publish workflow injects per-arch (osx-arm64 / osx-x64) closures; this
+       item covers the locally-built slice for dev/test. -->
+  <ItemGroup Condition="'$(PagmoNativePackDir)' == '' And '$(OS)' != 'Windows_NT' And Exists('$(PagmoWrapperNativeDir)/build/libPagmoWrapper.dylib')">
+    <None Include="$(PagmoWrapperNativeDir)/build/libPagmoWrapper.dylib"
+          Pack="true"
+          PackagePath="runtimes/osx/native/libPagmoWrapper.dylib" />
+  </ItemGroup>
+
+  <!-- Copy the native library next to the managed output for dev/test runs. -->
+  <Target Name="CopyNativeWindows" AfterTargets="Build"
+          Condition="'$(OS)' == 'Windows_NT' And Exists('$(PagmoWrapperNativeDir)\win-build\PagmoWrapper.dll')">
+    <Copy SourceFiles="$(PagmoWrapperNativeDir)\win-build\PagmoWrapper.dll"
+          DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
+  </Target>
+
+  <Target Name="CopyNativeUnix" AfterTargets="Build"
+          Condition="'$(OS)' != 'Windows_NT' And Exists('$(PagmoWrapperNativeDir)/build')">
+    <ItemGroup>
+      <_NativeLibs Include="$(PagmoWrapperNativeDir)/build/libPagmoWrapper.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_NativeLibs)" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

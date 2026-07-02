@@ -1,0 +1,14 @@
+{
+  "dotnet.defaultSolution": "Pagmo.NET.sln",
+  "files.exclude": {
+    "**/bin": true,
+    "**/obj": true,
+    "**/Intermediate": true
+  },
+  "search.exclude": {
+    "**/bin": true,
+    "**/obj": true,
+    "**/Intermediate": true
+  },
+  "cmake.sourceDirectory": "/home/sam/src/pagmoNET/pagmoWrapper"
+}

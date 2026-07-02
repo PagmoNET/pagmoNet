@@ -1,0 +1,44 @@
+using NUnit.Framework;
+using pagmo;
+using Tests.Pagmo.NET.TestProblems;
+
+namespace Tests.Pagmo.NET.Algorithms;
+
+[TestFixture]
+public class Test_xnes : TestAlgorithmBase
+{
+    public override IAlgorithm CreateAlgorithm()
+    {
+        return new pagmo.xnes(10u, 1u);
+    }
+
+    [Test]
+    public override void TestNameIsCorrect()
+    {
+        using (var problem = new TwoDimensionalSingleObjectiveProblemWrapper())
+        using (var algorithm = CreateAlgorithm(problem))
+        {
+            Assert.AreEqual("xNES: Exponential Natural Evolution Strategies", algorithm.get_name());
+        }
+    }
+
+    public override bool SupportsGeneration => false;
+
+    /// <inheritdoc />
+    public override bool Constrained => false;
+
+    /// <inheritdoc />
+    public override bool Unconstrained => true;
+
+    /// <inheritdoc />
+    public override bool SingleObjective => true;
+
+    /// <inheritdoc />
+    public override bool MultiObjective => false;
+
+    /// <inheritdoc />
+    public override bool IntegerProgramming => false;
+
+    /// <inheritdoc />
+    public override bool Stochastic => true;
+}

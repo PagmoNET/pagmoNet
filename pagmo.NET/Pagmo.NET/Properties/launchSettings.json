@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Pagmo.NET": {
+      "commandName": "Project",
+      "nativeDebugging": true
+    }
+  }
+}

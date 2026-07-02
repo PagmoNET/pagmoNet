@@ -1,0 +1,15 @@
+THIRD-PARTY NOTICES
+===================
+
+This package bundles IPOPT (Interior Point OPTimizer), developed by COIN-OR.
+
+  Name:    IPOPT
+  Author:  Andreas Wächter, Carl Laird, and contributors
+  Source:  https://github.com/coin-or/Ipopt
+  License: Eclipse Public License 2.0 (EPL-2.0)
+           https://opensource.org/licenses/EPL-2.0
+
+The wrapper code in this repository (SWIG interface files, generated C# and
+Java stubs, and CMake build scripts) is original work licensed under
+LGPL-2.1-or-later (see LICENSE). The IPOPT library itself is not modified
+and retains its EPL-2.0 license.

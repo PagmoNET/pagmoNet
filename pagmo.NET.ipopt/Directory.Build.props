@@ -1,0 +1,25 @@
+<Project>
+
+  <!--
+    Single source of truth for this repo's package version.
+
+    MSBuild auto-imports the nearest Directory.Build.props walking up from each
+    project, so Pagmo.NET.Ipopt.csproj (and the Tests/CleanRoom projects) inherit
+    this <Version> instead of hardcoding their own. PackageVersion defaults to
+    Version when unset.
+
+    The base sources compiled into this superset live under pagmo.NET/, which has
+    its OWN Directory.Build.props — but version is resolved per PROJECT FILE, and
+    this project file lives here, so the superset uses this value (the two repos'
+    versions stay independently settable).
+
+    CI overrides this at pack time via `-p:Version=<x>` on the command line
+    (command-line properties win over this file), mirroring how the Java side
+    drives its version from gradle.properties + `-Pversion`. So this value is
+    the local/default; the release tag is what actually ships.
+  -->
+  <PropertyGroup>
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,99 @@
+﻿using System;
+using System.Collections.Generic;
+using NUnit.Framework;
+using pagmo;
+
+namespace Tests.Pagmo.NET.Problems
+{
+    [TestFixture]
+    public class Test_cec2006 : TestProblemBase
+    {
+        public override IProblem CreateStandardProblem(uint problemIndex = 0)
+        {
+            if (problemIndex == 0)
+                problemIndex = 1;
+            return new cec2006(problemIndex);
+        }
+
+        public override IEnumerable<uint> MultiProblemIndices {
+            get
+            {
+                for (uint i = 1; i <= 24; i++)
+                {
+                    yield return i;
+                }
+            }
+        }
+
+        [Test]
+        public override void TestBoilerPlate()
+        {
+            using var problem = CreateStandardProblem(1);
+            Assert.AreEqual("CEC2006 - g1", problem.get_name(), "name");
+            Assert.AreEqual(0, problem.get_nec(), "equality constraint count");
+            Assert.AreEqual(1, problem.get_nobj(), "objective count");
+            Assert.AreEqual(0, problem.get_nix(), "integer count");
+            Assert.AreEqual(ThreadSafety.Basic, problem.get_thread_safety(), "thread safety");
+            using var bounds = problem.get_bounds();
+            Assert.AreEqual(0.0, bounds.first[0]);
+            Assert.IsFalse(problem.has_batch_fitness(), "has batch fitness");
+        }
+
+        [Test]
+        public override void TestOptimizing()
+        {
+            using var problemBase = CreateStandardProblem();
+            using var bounds = problemBase.get_bounds();
+            Assert.AreEqual(0, bounds.first[0]);
+            using var algorithm = new gaco(20);
+            using (var pop = new population(problemBase, 1024))
+            {
+                algorithm.set_seed(2); // for consistent results
+                using var initialProblem = pop.get_problem();
+                var initialFevals = initialProblem.get_fevals();
+                
+                using var finalpop = algorithm.evolve(pop);
+                using var finalProblem = finalpop.get_problem();
+                using var championDecisionVector = finalpop.champion_x();
+                using var championFitness = finalpop.champion_f();
+                var champX = championDecisionVector.ToArray();
+                var champF = championFitness.ToArray();
+                Assert.AreEqual(13, champX.Length, "2 in x");
+                Assert.AreEqual(0.991d, champX[0], 1.0, "1.0 for first x value");
+                Assert.AreEqual(1.0, champX[1], 1.0, "1.0 for second x value");
+                // this function is hard to optimize (that's the point), are we anywhere close?
+                Assert.AreEqual(10, champF.Length, "1 in f(x)");
+                Assert.Greater(finalProblem.get_fevals(), initialFevals, "evolution should trigger additional function evaluations");
+                Assert.AreEqual(-12.5d, champF[0], 3.0, "optimal function value");
+
+            }
+        }
+
+        protected override IEnumerable<ProblemTestData> GetRegressionData()
+        {
+            return new List<ProblemTestData>()
+            {
+                new ProblemTestData("cec2006", "simpleTest1",
+                    new double[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 },
+                    new double[] { -181, 17, 20, 23, 2, -5, -12, -3, -8, -13 }, 1),
+                new ProblemTestData("cec2006", "simpleTest2",
+                    new double[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, },
+                    new double[] { -0.03410429993861006, -2.43290200817664E+18, 60, }, 2),
+            };
+        }
+
+        [Test]
+        public void TestFitnessVectorLengthForKnownValidInput()
+        {
+            using var problem = CreateStandardProblem(1);
+            using var x = new DoubleVector(new double[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 });
+            using var fitness = problem.fitness(x);
+            Assert.AreEqual(problem.get_nobj() + problem.get_nec() + problem.get_nic(), (uint)fitness.Count);
+        }
+
+        protected override bool SupportsMidpointFitnessProbe()
+        {
+            return false;
+        }
+    }
+}

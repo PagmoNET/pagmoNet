@@ -1,0 +1,5 @@
+build/
+.gradle/
+
+# SWIG-generated files — regenerated from .i sources by CI
+src/generated/java/

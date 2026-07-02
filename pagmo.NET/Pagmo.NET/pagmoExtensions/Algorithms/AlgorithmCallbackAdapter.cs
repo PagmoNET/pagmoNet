@@ -1,0 +1,120 @@
+using System;
+using System.Runtime.ExceptionServices;
+
+namespace pagmo
+{
+    /// <summary>
+    /// SWIG director adapter that forwards native algorithm callbacks to managed IAlgorithm.
+    /// </summary>
+    internal sealed class AlgorithmCallbackAdapter : AlgorithmCallback
+    {
+        private readonly IAlgorithm _algorithm;
+        private ExceptionDispatchInfo _deferredManagedException;
+
+        /// <summary>
+        /// Invokes the corresponding pagmo API. See docs/api-reference.md for upstream links.
+        /// </summary>
+        public AlgorithmCallbackAdapter(IAlgorithm algorithm)
+        {
+            _algorithm = algorithm ?? throw new ArgumentNullException(nameof(algorithm));
+        }
+
+        private void CaptureDeferredManagedException(Exception ex)
+        {
+            _deferredManagedException ??= ExceptionDispatchInfo.Capture(ex);
+        }
+
+        private static T RequireNonNullResult<T>(T value, string callbackName) where T : class
+        {
+            return value ?? throw new InvalidOperationException(
+                $"Managed algorithm callback '{callbackName}' returned null. Callbacks must return non-null values.");
+        }
+
+        /// <summary>
+        /// Invokes the corresponding pagmo API. See docs/api-reference.md for upstream links.
+        /// </summary>
+        public override population evolve(population pop)
+        {
+            try
+            {
+                return RequireNonNullResult(_algorithm.evolve(pop), nameof(evolve));
+            }
+            catch (Exception ex)
+            {
+                // Do not let managed exceptions cross reverse-callback boundaries.
+                CaptureDeferredManagedException(ex);
+                return pop;
+            }
+        }
+
+        /// <summary>
+        /// Invokes the corresponding pagmo API. See docs/api-reference.md for upstream links.
+        /// </summary>
+        public override void set_seed(uint seed)
+        {
+            try
+            {
+                _algorithm.set_seed(seed);
+            }
+            catch (Exception ex)
+            {
+                CaptureDeferredManagedException(ex);
+            }
+        }
+
+        /// <summary>
+        /// Invokes the corresponding pagmo API. See docs/api-reference.md for upstream links.
+        /// </summary>
+        public override bool has_set_seed()
+        {
+            return true;
+        }
+
+        /// <summary>
+        /// Invokes the corresponding pagmo API. See docs/api-reference.md for upstream links.
+        /// </summary>
+        public override void set_verbosity(uint level)
+        {
+            try
+            {
+                _algorithm.set_verbosity(level);
+            }
+            catch (Exception ex)
+            {
+                CaptureDeferredManagedException(ex);
+            }
+        }
+
+        /// <summary>
+        /// Invokes the corresponding pagmo API. See docs/api-reference.md for upstream links.
+        /// </summary>
+        public override bool has_set_verbosity()
+        {
+            return true;
+        }
+
+        /// <summary>
+        /// Invokes the corresponding pagmo API. See docs/api-reference.md for upstream links.
+        /// </summary>
+        public override string get_name() => _algorithm.get_name();
+        /// <summary>
+        /// Invokes the corresponding pagmo API. See docs/api-reference.md for upstream links.
+        /// </summary>
+        public override string get_extra_info() => _algorithm.get_extra_info();
+        /// <summary>
+        /// Invokes the corresponding pagmo API. See docs/api-reference.md for upstream links.
+        /// </summary>
+        public override ThreadSafety get_thread_safety() => ThreadSafety.Basic;
+
+        /// <summary>
+        /// Invokes the corresponding pagmo API. See docs/api-reference.md for upstream links.
+        /// </summary>
+        public override string consume_deferred_exception()
+        {
+            var captured = _deferredManagedException;
+            _deferredManagedException = null;
+            return captured?.SourceException.ToString() ?? string.Empty;
+        }
+    }
+}
+

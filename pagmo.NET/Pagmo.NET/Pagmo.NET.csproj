@@ -1,0 +1,129 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <!-- Version comes from ../Directory.Build.props (single source); CI overrides via -p:Version=. -->
+    <PackageId>Pagmo.NET</PackageId>
+    <Authors>Pagmo.NET contributors</Authors>
+    <Description>C# bindings and ergonomic wrappers for pagmo.</Description>
+    <PackageLicenseExpression>LGPL-2.1-or-later</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/samthegliderpilot/Pagmo.NET</PackageProjectUrl>
+    <PackageReadmeFile>nuget-readme.md</PackageReadmeFile>
+    <PackageTags>pagmo;optimization;evolutionary;metaheuristic;SWIG</PackageTags>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <IsPackable>true</IsPackable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS8981;CS1591</NoWarn>
+    <Platforms>x64</Platforms>
+    <!-- MSBuild vcxproj output (legacy dev builds without vcpkg) -->
+    <PagmoWrapperBinDir>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\..\pagmoWrapper\pagmoWrapper\bin'))</PagmoWrapperBinDir>
+    <!-- cmake static build output (x64-windows-static-md, produced by build-native.ps1 with vcpkg) -->
+    <PagmoWrapperWinCmakeBuildDir>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\..\pagmoWrapper\win-build'))</PagmoWrapperWinCmakeBuildDir>
+    <!-- cmake build output for Linux/macOS -->
+    <PagmoWrapperCmakeBuildDir>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\..\pagmoWrapper\build'))</PagmoWrapperCmakeBuildDir>
+  </PropertyGroup>
+
+  <!-- Activate SNOPT7 support automatically when SWIG has generated the snopt7 wrapper. -->
+  <PropertyGroup Condition="Exists('$(MSBuildProjectDirectory)\pygmoWrappers\snopt7.cs')">
+    <DefineConstants>$(DefineConstants);PAGMO_WITH_SNOPT7</DefineConstants>
+  </PropertyGroup>
+
+  <!-- Activate IPOPT support when ipopt.cs is present (supplied by the PagmoNet.Ipopt add-on). -->
+  <PropertyGroup Condition="Exists('$(MSBuildProjectDirectory)\pygmoWrappers\ipopt.cs')">
+    <DefineConstants>$(DefineConstants);PAGMO_WITH_IPOPT</DefineConstants>
+  </PropertyGroup>
+
+  <!-- Allow Pagmo.NET.Ipopt (separate assembly) to access internal SWIG plumbing. -->
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>Pagmo.NET.Ipopt</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="cPlusPlusFiles\**" />
+    <EmbeddedResource Remove="cPlusPlusFiles\**" />
+    <None Remove="cPlusPlusFiles\**" />
+    <Compile Remove="obj\**;bin\**" />
+    <EmbeddedResource Remove="obj\**;bin\**" />
+    <None Remove="obj\**;bin\**" />
+    <Compile Remove="artifacts\**" />
+    <EmbeddedResource Remove="artifacts\**" />
+    <None Remove="artifacts\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\docs\nuget-readme.md" Pack="true" PackagePath="\" />
+
+    <None Include="..\LICENSE" Pack="true" PackagePath="\" />
+    <None Include="..\THIRD_PARTY_LICENSES.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <!-- Windows cmake static build: single self-contained DLL (pagmo2 + Boost + TBB + NLopt
+       statically linked via x64-windows-static-md vcpkg triplet; IPOPT ships separately in
+       Pagmo.NET.Ipopt). Preferred over the legacy vcxproj multi-DLL bundle when present. -->
+  <ItemGroup Condition="'$(OS)' == 'Windows_NT' And Exists('$(PagmoWrapperWinCmakeBuildDir)\PagmoWrapper.dll')">
+    <None Include="$(PagmoWrapperWinCmakeBuildDir)\PagmoWrapper.dll"
+          Pack="true"
+          PackagePath="runtimes/win-x64/native/" />
+  </ItemGroup>
+
+  <!-- Windows legacy fallback: vcxproj multi-DLL bundle (no nlopt/ipopt; used when cmake build absent). -->
+  <ItemGroup Condition="'$(OS)' == 'Windows_NT' And !Exists('$(PagmoWrapperWinCmakeBuildDir)\PagmoWrapper.dll') And Exists('$(PagmoWrapperBinDir)')">
+    <None Include="$(PagmoWrapperBinDir)\*.dll"
+          Pack="true"
+          PackagePath="runtimes/win-x64/native/" />
+  </ItemGroup>
+
+  <!-- Linux: single self-contained libPagmoWrapper.so (pagmo2 + Boost + TBB + NLopt
+       statically linked via x64-linux-static-pic vcpkg triplet; no system runtime deps;
+       IPOPT ships separately in Pagmo.NET.Ipopt). -->
+  <ItemGroup Condition="'$(OS)' != 'Windows_NT' And Exists('$(PagmoWrapperCmakeBuildDir)/libPagmoWrapper.so')">
+    <None Include="$(PagmoWrapperCmakeBuildDir)/libPagmoWrapper.so"
+          Pack="true"
+          PackagePath="runtimes/linux-x64/native/libPagmoWrapper.so" />
+  </ItemGroup>
+
+  <!-- macOS: libPagmoWrapper.dylib (pagmo2 + Boost + TBB + NLopt statically linked via
+       arm64-osx-static-pic or x64-osx-static-pic vcpkg triplet; no system runtime deps).
+       The NuGet release package uses a universal binary injected by the release workflow
+       at runtimes/osx/native/; this item covers local dev builds. -->
+  <ItemGroup Condition="'$(OS)' != 'Windows_NT' And Exists('$(PagmoWrapperCmakeBuildDir)/libPagmoWrapper.dylib')">
+    <None Include="$(PagmoWrapperCmakeBuildDir)/libPagmoWrapper.dylib"
+          Pack="true"
+          PackagePath="runtimes/osx/native/libPagmoWrapper.dylib" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="pagmoExtensions\BatchEvaluators\" />
+    <Folder Include="pagmoExtensions\Topologies\" />
+    <Folder Include="pagmoExtensions\Utils\" />
+    <Folder Include="pygmoWrappers\" />
+  </ItemGroup>
+
+  <!-- Windows cmake static build: copy self-contained DLL to managed output for dev/test runs. -->
+  <Target Name="PostBuildWindowsCmake" AfterTargets="PostBuild"
+          Condition="'$(OS)' == 'Windows_NT' And Exists('$(PagmoWrapperWinCmakeBuildDir)\PagmoWrapper.dll')">
+    <Copy SourceFiles="$(PagmoWrapperWinCmakeBuildDir)\PagmoWrapper.dll"
+          DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
+  </Target>
+
+  <!-- Windows legacy: copy DLL bundle from vcxproj output (no nlopt/ipopt; quick dev builds). -->
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent"
+          Condition="'$(OS)' == 'Windows_NT' And Exists('$(PagmoWrapperBinDir)')">
+    <Exec Command="xcopy /Y /I /E &quot;$(PagmoWrapperBinDir)\*&quot; &quot;$(TargetDir)&quot;" />
+  </Target>
+
+  <!-- Linux/macOS: copy libPagmoWrapper.so from cmake build output directory. -->
+  <Target Name="PostBuildLinux" AfterTargets="PostBuildEvent"
+          Condition="'$(OS)' != 'Windows_NT' And Exists('$(PagmoWrapperCmakeBuildDir)')">
+    <ItemGroup>
+      <_NativeLibs Include="$(PagmoWrapperCmakeBuildDir)/libPagmoWrapper.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_NativeLibs)" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

@@ -1,0 +1,11 @@
+bin/
+obj/
+*.user
+*.suo
+.vs/
+local-packages/
+native/
+.idea/
+
+# SWIG-generated files — regenerated from .i sources by CI
+generated/

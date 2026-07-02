@@ -1,0 +1,124 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Pagmo.NET: regenerate SWIG wrappers",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "scripts/regen-swig.ps1"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Pagmo.NET: build native (Debug x64)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "scripts/build-native.ps1",
+        "-Configuration",
+        "Debug",
+        "-Platform",
+        "x64"
+      ],
+      "dependsOn": [
+        "Pagmo.NET: regenerate SWIG wrappers"
+      ],
+      "dependsOrder": "sequence",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "Pagmo.NET: build tests (Debug x64)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "scripts/test.ps1",
+        "-Configuration",
+        "Debug",
+        "-Stage",
+        "build"
+      ],
+      "dependsOn": [
+        "Pagmo.NET: build native (Debug x64)"
+      ],
+      "dependsOrder": "sequence",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "Pagmo.NET: build examples (Debug x64)",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "build",
+        "Examples/Examples.Pagmo.NET/Examples.Pagmo.NET.csproj",
+        "-c", "Debug",
+        "-p:Platform=x64"
+      ],
+      "dependsOn": [
+        "Pagmo.NET: build native (Debug x64)"
+      ],
+      "dependsOrder": "sequence",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "Pagmo.NET: test (Debug x64)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "scripts/test.ps1",
+        "-Configuration",
+        "Debug",
+        "-Stage",
+        "test",
+        "-NoRestore"
+      ],
+      "dependsOn": [
+        "Pagmo.NET: build tests (Debug x64)"
+      ],
+      "dependsOrder": "sequence",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": "$msCompile"
+    }
+  ]
+}

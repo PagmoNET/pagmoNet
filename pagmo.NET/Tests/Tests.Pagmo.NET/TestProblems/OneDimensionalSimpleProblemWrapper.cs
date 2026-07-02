@@ -1,0 +1,69 @@
+﻿using pagmo;
+
+namespace Tests.Pagmo.NET.TestProblems
+{
+    // Minimal 1D convex problem used by generic algorithm tests as a fast, deterministic baseline.
+    public class OneDimensionalSimpleProblem : TestProblemWrapper
+    {
+        private readonly DoubleVector _lowerBounds = new DoubleVector(new[] { -10.0 });
+        private readonly DoubleVector _upperBounds = new DoubleVector(new[] { 10.0 });
+
+        public override PairOfDoubleVectors get_bounds()
+        {
+            return new PairOfDoubleVectors(_lowerBounds, _upperBounds);
+        }
+
+        public override DoubleVector fitness(DoubleVector decisionVector)
+        {
+            return new DoubleVector(new[] { decisionVector[0] * decisionVector[0] });
+        }
+
+        public override string get_name()
+        {
+            return "Simple 1-D Quadratic (x^2) test problem";
+        }
+
+        public override bool has_batch_fitness()
+        {
+            return false;
+        }
+
+        public override uint get_nobj()
+        {
+            return 1;
+        }
+
+        public override uint get_nix()
+        {
+            return 0;
+        }
+
+        public override uint get_nec()
+        {
+            return 0;
+        }
+
+        public override uint get_nic()
+        {
+            return 0;
+        }
+
+        public override bool has_gradient()
+        {
+            return true;
+        }
+
+        public override DoubleVector gradient(DoubleVector decisionVector)
+        {
+            var ans = new DoubleVector(new []{2 * decisionVector[0]});
+            return ans;
+        }
+
+        public override double ExpectedOptimalFunctionValue => 0.0;
+
+        public override double[] ExpectedOptimalX
+        {
+            get { return new[] { 0.0 }; }
+        }
+    }
+}

@@ -1,0 +1,12 @@
+.gradle/
+.kotlin/
+build/
+*/build/
+pagmoWrapper/win-build/
+pagmoWrapper/build/
+*.user
+local.properties
+
+# SWIG-generated files — regenerated from .i sources by CI and by scripts/regen-swig.ps1 locally
+core/src/generated/java/
+pagmoWrapper/generated/
