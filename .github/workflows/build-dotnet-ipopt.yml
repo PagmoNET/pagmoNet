@@ -1,0 +1,262 @@
+name: Build and Test (Pagmo.NET.Ipopt)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'native/**'
+      - 'swig/**'
+      - 'ports/**'
+      - 'triplets/**'
+      - 'scripts/**'
+      - 'pagmo.NET/**'
+      - 'pagmo.NET.ipopt/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'native/**'
+      - 'swig/**'
+      - 'ports/**'
+      - 'triplets/**'
+      - 'scripts/**'
+      - 'pagmo.NET/**'
+      - 'pagmo.NET.ipopt/**'
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+
+      - name: Install SWIG
+        run: choco install swig --yes
+        shell: pwsh
+
+      - name: Regenerate IPOPT-enabled C# bindings
+        run: pwsh pagmo.NET/createSwigWrappersAndPlaceThem.ps1 -WithIpopt
+        shell: pwsh
+
+      - name: Bootstrap vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg C:/vcpkg --depth 1
+          C:/vcpkg/bootstrap-vcpkg.bat -disableMetrics
+          echo "VCPKG_ROOT=C:/vcpkg" >> $env:GITHUB_ENV
+        shell: pwsh
+
+      - name: Cache vcpkg
+        uses: actions/cache@v4
+        with:
+          path: |
+            C:/vcpkg/installed
+            ~/AppData/Local/vcpkg/archives
+          key: vcpkg-windows-dotnet-ipopt-v2-${{ hashFiles('ports/**', 'native/CMakeLists.txt') }}
+          restore-keys: vcpkg-windows-dotnet-ipopt-v2-
+
+      - uses: mamba-org/setup-micromamba@v2
+        with:
+          micromamba-version: 'latest'
+          init-shell: 'none'
+          generate-run-shell: 'false'
+
+      - name: Install IPOPT (Windows via conda-forge)
+        run: |
+          micromamba create -c conda-forge -p C:\ipopt-env ipopt -y
+          echo "IPOPT_PREFIX=C:\ipopt-env\Library" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        shell: pwsh
+
+      - name: Build native with IPOPT
+        env:
+          VCPKG_OVERLAY_PORTS: ${{ github.workspace }}/ports
+        run: pwsh scripts/build-native.ps1 -Configuration Release -WithIpopt
+        shell: pwsh
+
+      - name: Dump vcpkg build logs on failure
+        if: failure()
+        run: |
+          $logDir = "C:\vcpkg\buildtrees\coin-or-ipopt"
+          if (Test-Path $logDir) {
+            Get-ChildItem "$logDir\config-*.log" -ErrorAction SilentlyContinue | ForEach-Object {
+              Write-Host "========== $($_.Name) =========="
+              Get-Content $_
+            }
+            Get-ChildItem "$logDir\*-err.log" -ErrorAction SilentlyContinue | ForEach-Object {
+              Write-Host "========== $($_.Name) (last 200 lines) =========="
+              Get-Content $_ | Select-Object -Last 200
+            }
+          }
+        shell: pwsh
+
+      - name: Copy DLL and IPOPT runtime DLLs for tests
+        run: |
+          New-Item -ItemType Directory -Force native-test | Out-Null
+          Copy-Item native\win-build\PagmoWrapper.dll native-test\ -Force
+          Get-ChildItem "C:\ipopt-env\Library\bin" -Filter "*.dll" -ErrorAction SilentlyContinue |
+            Copy-Item -Destination native-test\ -Force
+        shell: pwsh
+
+      - name: Run tests
+        run: |
+          $env:PATH = "C:\ipopt-env\Library\bin;$(Resolve-Path native\win-build);$env:PATH"
+          dotnet test pagmo.NET.ipopt/Tests/Tests.Pagmo.NET.Ipopt.csproj -p:Platform=x64 --logger "console;verbosity=minimal"
+        shell: pwsh
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential swig curl zip unzip tar \
+            autoconf autoconf-archive automake libtool libmumps-seq-dev
+
+      - name: Regenerate IPOPT-enabled C# bindings
+        run: pwsh pagmo.NET/createSwigWrappersAndPlaceThem.ps1 -WithIpopt
+
+      - name: Install PowerShell
+        run: |
+          source /etc/os-release
+          wget -q "https://packages.microsoft.com/config/ubuntu/${VERSION_ID}/packages-microsoft-prod.deb" -O ms-prod.deb
+          sudo dpkg -i ms-prod.deb
+          sudo apt-get update
+          sudo apt-get install -y powershell
+
+      - name: Bootstrap vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg ~/vcpkg --depth 1
+          ~/vcpkg/bootstrap-vcpkg.sh -disableMetrics
+          echo "VCPKG_ROOT=$HOME/vcpkg" >> $GITHUB_ENV
+
+      - name: Cache vcpkg
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/vcpkg/installed
+            ~/.cache/vcpkg/archives
+          key: vcpkg-linux-dotnet-ipopt-${{ hashFiles('ports/**', 'native/CMakeLists.txt') }}
+          restore-keys: vcpkg-linux-dotnet-ipopt-
+
+      - name: Build native with IPOPT
+        env:
+          VCPKG_OVERLAY_PORTS: ${{ github.workspace }}/ports
+        run: pwsh scripts/build-native.ps1 -Configuration Release -WithIpopt
+
+      - name: Dump IPOPT build logs on failure
+        if: failure()
+        run: |
+          for f in ~/vcpkg/buildtrees/coin-or-ipopt/config-*.log; do
+            [ -f "$f" ] || continue
+            echo "========== $f =========="
+            cat "$f"
+          done
+          for f in ~/vcpkg/buildtrees/coin-or-ipopt/build-*-err.log; do
+            [ -f "$f" ] || continue
+            echo "========== $f (last 200 lines) =========="
+            tail -200 "$f"
+          done
+
+      - name: Run tests
+        run: |
+          export LD_LIBRARY_PATH="$(pwd)/native/build:$LD_LIBRARY_PATH"
+          dotnet test pagmo.NET.ipopt/Tests/Tests.Pagmo.NET.Ipopt.csproj -p:Platform=x64 --logger "console;verbosity=minimal"
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+
+      - name: Install build tools
+        run: brew install autoconf autoconf-archive automake libtool swig powershell micromamba
+
+      - name: Install MUMPS and IPOPT (macOS via conda-forge)
+        run: |
+          micromamba create -c conda-forge -p $HOME/mumps-env mumps-seq ipopt -y
+          echo "MUMPS_PREFIX=$HOME/mumps-env" >> $GITHUB_ENV
+          echo "IPOPT_PREFIX=$HOME/mumps-env" >> $GITHUB_ENV
+          sudo mkdir -p /usr/local/lib
+          for lib in "$HOME/mumps-env/lib/lib"*mumps*.dylib \
+                     "$HOME/mumps-env/lib/libpord"*.dylib \
+                     "$HOME/mumps-env/lib/libipopt"*.dylib; do
+            [ -f "$lib" ] || continue
+            base=$(basename "$lib")
+            sudo ln -sf "$lib" "/usr/local/lib/$base"
+            noseq="${base/_seq/}"
+            [ "$noseq" != "$base" ] && sudo ln -sf "$lib" "/usr/local/lib/$noseq"
+          done
+          SDK=$(xcrun --show-sdk-path 2>/dev/null || true)
+          if [ -n "$SDK" ] && [ ! -f "$SDK/usr/lib/libm.tbd" ]; then
+            printf '--- !tapi-tbd\ntbd-version: 4\ntargets: [ arm64-apple-macos14.0, x86_64-apple-macos14.0 ]\ninstall-name: /usr/lib/libm.dylib\n...\n' \
+              | sudo tee "$SDK/usr/lib/libm.tbd" > /dev/null 2>&1 || true
+          fi
+
+      - name: Regenerate IPOPT-enabled C# bindings
+        run: pwsh pagmo.NET/createSwigWrappersAndPlaceThem.ps1 -WithIpopt
+
+      - name: Bootstrap vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg ~/vcpkg --depth 1
+          ~/vcpkg/bootstrap-vcpkg.sh -disableMetrics
+          echo "VCPKG_ROOT=$HOME/vcpkg" >> $GITHUB_ENV
+
+      - name: Cache vcpkg
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/vcpkg/installed
+            ~/.cache/vcpkg/archives
+          key: vcpkg-macos-dotnet-ipopt-v3-${{ hashFiles('ports/**', 'native/CMakeLists.txt') }}
+          restore-keys: vcpkg-macos-dotnet-ipopt-v3-
+
+      - name: Build native with IPOPT
+        env:
+          VCPKG_OVERLAY_PORTS: ${{ github.workspace }}/ports
+        run: pwsh scripts/build-native.ps1 -Configuration Release -WithIpopt
+
+      - name: Dump IPOPT build logs on failure
+        if: failure()
+        run: |
+          for f in ~/vcpkg/buildtrees/coin-or-ipopt/config-*.log; do
+            [ -f "$f" ] || continue
+            echo "========== $f =========="
+            cat "$f"
+          done
+          for f in ~/vcpkg/buildtrees/coin-or-ipopt/build-*-err.log; do
+            [ -f "$f" ] || continue
+            echo "========== $f (last 200 lines) =========="
+            tail -200 "$f"
+          done
+
+      - name: Copy IPOPT and MUMPS dylibs into build dir for test loading
+        run: cp "$HOME/mumps-env/lib"/*.dylib "$(pwd)/native/build/" 2>&1 || true
+
+      - name: Diagnose wrapper load (unmask the real dyld error)
+        run: |
+          build_dir="$(pwd)/native/build"
+          wrapper="$build_dir/libPagmoWrapper.dylib"
+          echo "== Does the wrapper exist? ==" && ls -la "$build_dir/" || echo "(build dir missing)"
+          echo "== otool -L ==" && { [ -f "$wrapper" ] && otool -L "$wrapper" || echo "WRAPPER NOT FOUND"; }
+          export DYLD_LIBRARY_PATH="$HOME/mumps-env/lib:$build_dir:$DYLD_LIBRARY_PATH"
+          python3 -c "import ctypes; ctypes.CDLL('$wrapper'); print('=== WRAPPER LOADED OK ===')" \
+            || echo "=== dlopen FAILED: the real reason is printed above ==="
+
+      - name: Run tests
+        run: |
+          export DYLD_LIBRARY_PATH="$HOME/mumps-env/lib:$(pwd)/native/build:$DYLD_LIBRARY_PATH"
+          dotnet test pagmo.NET.ipopt/Tests/Tests.Pagmo.NET.Ipopt.csproj -p:PlatformTarget=AnyCPU --logger "console;verbosity=minimal"

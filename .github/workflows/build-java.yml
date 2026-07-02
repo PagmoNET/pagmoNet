@@ -1,0 +1,199 @@
+name: Build and Test (PagmoNet4j)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'native/**'
+      - 'swig/**'
+      - 'ports/**'
+      - 'triplets/**'
+      - 'scripts/**'
+      - 'PagmoNet4j/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'native/**'
+      - 'swig/**'
+      - 'ports/**'
+      - 'triplets/**'
+      - 'scripts/**'
+      - 'PagmoNet4j/**'
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install SWIG
+        run: choco install swig --yes
+        shell: pwsh
+
+      - name: Regenerate SWIG Java bindings
+        run: |
+          New-Item -ItemType Directory -Force -Path "PagmoNet4j/core/src/generated/java/io/github/samthegliderpilot/pagmonet4j" | Out-Null
+          New-Item -ItemType Directory -Force -Path "PagmoNet4j/pagmoWrapper/generated" | Out-Null
+          swig -java -c++ `
+            -package "io.github.samthegliderpilot.pagmonet4j" `
+            -outdir "PagmoNet4j/core/src/generated/java/io/github/samthegliderpilot/pagmonet4j" `
+            -o "PagmoNet4j/pagmoWrapper/generated/pagmonet4j_wrap.cxx" `
+            -Iswig `
+            -Inative `
+            swig/Pagmo4jSwigInterface.i
+        shell: pwsh
+
+      - name: Bootstrap vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg C:/vcpkg --depth 1
+          C:/vcpkg/bootstrap-vcpkg.bat -disableMetrics
+          echo "VCPKG_ROOT=C:/vcpkg" >> $env:GITHUB_ENV
+        shell: pwsh
+
+      - name: Cache vcpkg installed
+        uses: actions/cache@v4
+        with:
+          path: C:/vcpkg/installed
+          key: vcpkg-windows-java-${{ hashFiles('ports/**', 'triplets/**', 'PagmoNet4j/pagmoWrapper/CMakeLists.txt', 'scripts/build-native.ps1') }}
+          restore-keys: vcpkg-windows-java-
+
+      - name: Build native
+        run: pwsh PagmoNet4j/scripts/build-native.ps1 -Configuration Release
+        shell: pwsh
+
+      - name: Run tests
+        env:
+          PAGMO4J_NATIVE_DIR: ${{ github.workspace }}/PagmoNet4j/pagmoWrapper/win-build
+          PAGMONET4J_BASE_VERIFY: "1"
+        run: ./gradlew :core:test :kotlin-ext:test --stacktrace
+        working-directory: PagmoNet4j
+        shell: pwsh
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential swig curl zip unzip tar \
+            autoconf autoconf-archive automake libtool powershell
+
+      - name: Regenerate SWIG Java bindings
+        run: |
+          mkdir -p PagmoNet4j/core/src/generated/java/io/github/samthegliderpilot/pagmonet4j
+          mkdir -p PagmoNet4j/pagmoWrapper/generated
+          swig -java -c++ \
+            -package "io.github.samthegliderpilot.pagmonet4j" \
+            -outdir "PagmoNet4j/core/src/generated/java/io/github/samthegliderpilot/pagmonet4j" \
+            -o "PagmoNet4j/pagmoWrapper/generated/pagmonet4j_wrap.cxx" \
+            -Iswig \
+            -Inative \
+            swig/Pagmo4jSwigInterface.i
+
+      - name: Bootstrap vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg ~/vcpkg --depth 1
+          ~/vcpkg/bootstrap-vcpkg.sh -disableMetrics
+          echo "VCPKG_ROOT=$HOME/vcpkg" >> $GITHUB_ENV
+
+      - name: Cache vcpkg installed
+        uses: actions/cache@v4
+        with:
+          path: ~/vcpkg/installed
+          key: vcpkg-linux-java-${{ hashFiles('ports/**', 'triplets/**', 'PagmoNet4j/pagmoWrapper/CMakeLists.txt', 'scripts/build-native.ps1') }}
+          restore-keys: vcpkg-linux-java-
+
+      - name: Build native
+        run: pwsh PagmoNet4j/scripts/build-native.ps1 -Configuration Release
+
+      - name: Run tests
+        env:
+          PAGMO4J_NATIVE_DIR: ${{ github.workspace }}/PagmoNet4j/pagmoWrapper/build
+          PAGMONET4J_BASE_VERIFY: "1"
+        run: |
+          chmod +x gradlew
+          ./gradlew :core:test :kotlin-ext:test --stacktrace
+        working-directory: PagmoNet4j
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install build tools
+        run: brew install autoconf autoconf-archive automake libtool swig powershell
+
+      - name: Create libm.tbd stub for Xcode 16.4+
+        run: |
+          SDK=$(xcrun --show-sdk-path 2>/dev/null || true)
+          if [ -n "$SDK" ] && [ ! -f "$SDK/usr/lib/libm.tbd" ]; then
+            printf '--- !tapi-tbd\ntbd-version: 4\ntargets: [ arm64-apple-macos14.0, x86_64-apple-macos14.0 ]\ninstall-name: /usr/lib/libm.dylib\n...\n' \
+              | sudo tee "$SDK/usr/lib/libm.tbd" > /dev/null 2>&1 || true
+          fi
+
+      - name: Regenerate SWIG Java bindings
+        run: |
+          mkdir -p PagmoNet4j/core/src/generated/java/io/github/samthegliderpilot/pagmonet4j
+          mkdir -p PagmoNet4j/pagmoWrapper/generated
+          swig -java -c++ \
+            -package "io.github.samthegliderpilot.pagmonet4j" \
+            -outdir "PagmoNet4j/core/src/generated/java/io/github/samthegliderpilot/pagmonet4j" \
+            -o "PagmoNet4j/pagmoWrapper/generated/pagmonet4j_wrap.cxx" \
+            -Iswig \
+            -Inative \
+            swig/Pagmo4jSwigInterface.i
+
+      - name: Bootstrap vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg ~/vcpkg --depth 1
+          ~/vcpkg/bootstrap-vcpkg.sh -disableMetrics
+          echo "VCPKG_ROOT=$HOME/vcpkg" >> $GITHUB_ENV
+
+      - name: Cache vcpkg installed
+        uses: actions/cache@v4
+        with:
+          path: ~/vcpkg/installed
+          key: vcpkg-macos-java-${{ hashFiles('ports/**', 'triplets/**', 'PagmoNet4j/pagmoWrapper/CMakeLists.txt', 'scripts/build-native.ps1') }}
+          restore-keys: vcpkg-macos-java-
+
+      - name: Build native
+        run: pwsh PagmoNet4j/scripts/build-native.ps1 -Configuration Release
+
+      - name: Dump cmake link line on failure
+        if: failure()
+        run: |
+          linktxt="PagmoNet4j/pagmoWrapper/build/CMakeFiles/pagmonet4j.dir/link.txt"
+          echo "========== link.txt =========="
+          cat "$linktxt" 2>/dev/null || echo "(link.txt not found)"
+          echo "========== libm references in build.make =========="
+          grep -rn "libm" PagmoNet4j/pagmoWrapper/build/CMakeFiles/pagmonet4j.dir/ 2>/dev/null || echo "(no libm references found)"
+
+      - name: Run tests
+        env:
+          PAGMO4J_NATIVE_DIR: ${{ github.workspace }}/PagmoNet4j/pagmoWrapper/build
+          PAGMONET4J_BASE_VERIFY: "1"
+        run: |
+          chmod +x gradlew
+          ./gradlew :core:test :kotlin-ext:test --stacktrace
+        working-directory: PagmoNet4j

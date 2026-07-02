@@ -1,0 +1,164 @@
+name: Build and Test (Pagmo.NET)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'native/**'
+      - 'swig/**'
+      - 'ports/**'
+      - 'triplets/**'
+      - 'scripts/**'
+      - 'pagmo.NET/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'native/**'
+      - 'swig/**'
+      - 'ports/**'
+      - 'triplets/**'
+      - 'scripts/**'
+      - 'pagmo.NET/**'
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+
+      - name: Install SWIG
+        run: choco install swig --yes
+        shell: pwsh
+
+      - name: Regenerate SWIG C# bindings
+        run: pwsh pagmo.NET/createSwigWrappersAndPlaceThem.ps1
+        shell: pwsh
+
+      - name: Bootstrap vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg C:/vcpkg --depth 1
+          C:/vcpkg/bootstrap-vcpkg.bat -disableMetrics
+          echo "VCPKG_ROOT=C:/vcpkg" >> $env:GITHUB_ENV
+        shell: pwsh
+
+      - name: Cache vcpkg installed
+        uses: actions/cache@v4
+        with:
+          path: C:/vcpkg/installed
+          key: vcpkg-windows-dotnet-${{ hashFiles('ports/**', 'triplets/**', 'native/CMakeLists.txt', 'scripts/build-native.ps1') }}
+          restore-keys: vcpkg-windows-dotnet-
+
+      - name: Build native
+        run: pwsh pagmo.NET/scripts/build-native.ps1 -Configuration Release
+        shell: pwsh
+
+      - name: Run tests
+        env:
+          PAGMONET_BASE_VERIFY: "1"
+        run: |
+          $env:PATH = "${{ github.workspace }}\native\win-build;$env:PATH"
+          dotnet test pagmo.NET/Tests/Tests.Pagmo.NET/Tests.Pagmo.NET.csproj -p:Platform=x64 --logger "console;verbosity=minimal"
+        shell: pwsh
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential swig curl zip unzip tar \
+            autoconf autoconf-archive automake libtool
+
+      - name: Regenerate SWIG C# bindings
+        run: pwsh pagmo.NET/createSwigWrappersAndPlaceThem.ps1
+
+      - name: Install PowerShell
+        run: |
+          source /etc/os-release
+          wget -q "https://packages.microsoft.com/config/ubuntu/${VERSION_ID}/packages-microsoft-prod.deb" -O ms-prod.deb
+          sudo dpkg -i ms-prod.deb
+          sudo apt-get update
+          sudo apt-get install -y powershell
+
+      - name: Bootstrap vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg ~/vcpkg --depth 1
+          ~/vcpkg/bootstrap-vcpkg.sh -disableMetrics
+          echo "VCPKG_ROOT=$HOME/vcpkg" >> $GITHUB_ENV
+
+      - name: Cache vcpkg installed
+        uses: actions/cache@v4
+        with:
+          path: ~/vcpkg/installed
+          key: vcpkg-linux-dotnet-${{ hashFiles('ports/**', 'triplets/**', 'native/CMakeLists.txt', 'scripts/build-native.ps1') }}
+          restore-keys: vcpkg-linux-dotnet-
+
+      - name: Build native
+        run: pwsh pagmo.NET/scripts/build-native.ps1 -Configuration Release
+
+      - name: Run tests
+        env:
+          PAGMONET_BASE_VERIFY: "1"
+        run: |
+          export LD_LIBRARY_PATH="$(pwd)/native/build:$LD_LIBRARY_PATH"
+          dotnet test pagmo.NET/Tests/Tests.Pagmo.NET/Tests.Pagmo.NET.csproj -p:Platform=x64 --logger "console;verbosity=minimal"
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+
+      - name: Install build tools
+        run: brew install autoconf autoconf-archive automake libtool swig
+
+      - name: Create libm.tbd stub for Xcode 16.4+
+        run: |
+          SDK=$(xcrun --show-sdk-path 2>/dev/null || true)
+          if [ -n "$SDK" ] && [ ! -f "$SDK/usr/lib/libm.tbd" ]; then
+            printf '--- !tapi-tbd\ntbd-version: 4\ntargets: [ arm64-apple-macos14.0, x86_64-apple-macos14.0 ]\ninstall-name: /usr/lib/libm.dylib\n...\n' \
+              | sudo tee "$SDK/usr/lib/libm.tbd" > /dev/null 2>&1 || true
+          fi
+
+      - name: Regenerate SWIG C# bindings
+        run: pwsh pagmo.NET/createSwigWrappersAndPlaceThem.ps1
+
+      - name: Bootstrap vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg ~/vcpkg --depth 1
+          ~/vcpkg/bootstrap-vcpkg.sh -disableMetrics
+          echo "VCPKG_ROOT=$HOME/vcpkg" >> $GITHUB_ENV
+
+      - name: Cache vcpkg installed
+        uses: actions/cache@v4
+        with:
+          path: ~/vcpkg/installed
+          key: vcpkg-macos-dotnet-${{ hashFiles('ports/**', 'triplets/**', 'native/CMakeLists.txt', 'scripts/build-native.ps1') }}
+          restore-keys: vcpkg-macos-dotnet-
+
+      - name: Build native
+        run: pwsh pagmo.NET/scripts/build-native.ps1 -Configuration Release
+
+      - name: Run tests
+        env:
+          PAGMONET_BASE_VERIFY: "1"
+        run: |
+          export DYLD_LIBRARY_PATH="$(pwd)/native/build:$DYLD_LIBRARY_PATH"
+          dotnet test pagmo.NET/Tests/Tests.Pagmo.NET/Tests.Pagmo.NET.csproj -p:PlatformTarget=AnyCPU --logger "console;verbosity=minimal"

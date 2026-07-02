@@ -1,0 +1,302 @@
+name: Build and Test (PagmoNet4j.ipopt)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'native/**'
+      - 'swig/**'
+      - 'ports/**'
+      - 'triplets/**'
+      - 'scripts/**'
+      - 'PagmoNet4j/**'
+      - 'PagmoNet4j.ipopt/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'native/**'
+      - 'swig/**'
+      - 'ports/**'
+      - 'triplets/**'
+      - 'scripts/**'
+      - 'PagmoNet4j/**'
+      - 'PagmoNet4j.ipopt/**'
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+# PagmoNet4j.ipopt is a SELF-CONTAINED superset: one IPOPT-enabled SWIG run regenerates
+# the WHOLE binding surface into PagmoNet4j.ipopt/src/generated/java, compiled together
+# with the base hand-written sources (PagmoNet4j/core/src/main/java) and the IPOPT-enabled
+# native. There is no dependency on a published/mavenLocal base jar.
+
+jobs:
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install SWIG
+        run: choco install swig --yes
+        shell: pwsh
+
+      - name: Regenerate IPOPT-enabled Java bindings (superset)
+        run: |
+          New-Item -ItemType Directory -Force -Path "PagmoNet4j.ipopt/src/generated/java/io/github/samthegliderpilot/pagmonet4j" | Out-Null
+          New-Item -ItemType Directory -Force -Path "PagmoNet4j/pagmoWrapper/generated" | Out-Null
+          swig -java -c++ `
+            -package "io.github.samthegliderpilot.pagmonet4j" `
+            -outdir "PagmoNet4j.ipopt/src/generated/java/io/github/samthegliderpilot/pagmonet4j" `
+            -o "PagmoNet4j/pagmoWrapper/generated/pagmonet4j_wrap.cxx" `
+            -DPAGMO_WITH_IPOPT_JNI `
+            -Iswig `
+            -Inative `
+            swig/Pagmo4jSwigInterface.i
+        shell: pwsh
+
+      - name: Bootstrap vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg C:/vcpkg --depth 1
+          C:/vcpkg/bootstrap-vcpkg.bat -disableMetrics
+          echo "VCPKG_ROOT=C:/vcpkg" >> $env:GITHUB_ENV
+        shell: pwsh
+
+      - name: Cache vcpkg
+        uses: actions/cache@v4
+        with:
+          path: |
+            C:/vcpkg/installed
+            ~/AppData/Local/vcpkg/archives
+          key: vcpkg-windows-java-ipopt-v2-${{ hashFiles('ports/**', 'PagmoNet4j/pagmoWrapper/CMakeLists.txt') }}
+          restore-keys: vcpkg-windows-java-ipopt-v2-
+
+      - uses: mamba-org/setup-micromamba@v2
+        with:
+          micromamba-version: 'latest'
+          init-shell: 'none'
+          generate-run-shell: 'false'
+
+      - name: Install IPOPT (Windows via conda-forge)
+        run: |
+          micromamba create -c conda-forge -p C:\ipopt-env ipopt -y
+          echo "IPOPT_PREFIX=C:\ipopt-env\Library" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        shell: pwsh
+
+      - name: Build native with IPOPT
+        env:
+          PAGMONET4J_ROOT: ${{ github.workspace }}/PagmoNet4j
+          PAGMONET4J_FEATURES: nlopt,ipopt
+          VCPKG_OVERLAY_PORTS: ${{ github.workspace }}/ports
+        run: pwsh PagmoNet4j.ipopt/scripts/build-native.ps1 -Configuration Release
+        shell: pwsh
+
+      - name: Copy IPOPT runtime DLLs alongside native library
+        run: |
+          $winBuild = "PagmoNet4j\pagmoWrapper\win-build"
+          New-Item -ItemType Directory -Force $winBuild | Out-Null
+          Get-ChildItem "C:\ipopt-env\Library\bin" -Filter "*.dll" -ErrorAction SilentlyContinue |
+            Copy-Item -Destination $winBuild -Force
+        shell: pwsh
+
+      - name: Dump vcpkg build logs on failure
+        if: failure()
+        run: |
+          $logDir = "C:\vcpkg\buildtrees\coin-or-ipopt"
+          if (Test-Path $logDir) {
+            Get-ChildItem "$logDir\config-*.log" -ErrorAction SilentlyContinue | ForEach-Object {
+              Write-Host "========== $($_.Name) =========="
+              Get-Content $_
+            }
+            Get-ChildItem "$logDir\*-err.log" -ErrorAction SilentlyContinue | ForEach-Object {
+              Write-Host "========== $($_.Name) (last 200 lines) =========="
+              Get-Content $_ | Select-Object -Last 200
+            }
+          }
+        shell: pwsh
+
+      - name: Run tests
+        env:
+          PAGMO4J_NATIVE_DIR: ${{ github.workspace }}/PagmoNet4j/pagmoWrapper/win-build
+        run: |
+          $env:PATH = "C:\ipopt-env\Library\bin;$env:PATH"
+          ./gradlew --no-daemon test
+        working-directory: PagmoNet4j.ipopt
+        shell: pwsh
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential swig curl zip unzip tar \
+            autoconf autoconf-archive automake libtool libmumps-seq-dev powershell
+
+      - name: Regenerate IPOPT-enabled Java bindings (superset)
+        run: |
+          mkdir -p PagmoNet4j.ipopt/src/generated/java/io/github/samthegliderpilot/pagmonet4j
+          mkdir -p PagmoNet4j/pagmoWrapper/generated
+          swig -java -c++ \
+            -package "io.github.samthegliderpilot.pagmonet4j" \
+            -outdir PagmoNet4j.ipopt/src/generated/java/io/github/samthegliderpilot/pagmonet4j \
+            -o PagmoNet4j/pagmoWrapper/generated/pagmonet4j_wrap.cxx \
+            -DPAGMO_WITH_IPOPT_JNI \
+            -Iswig \
+            -Inative \
+            swig/Pagmo4jSwigInterface.i
+
+      - name: Bootstrap vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg ~/vcpkg --depth 1
+          ~/vcpkg/bootstrap-vcpkg.sh -disableMetrics
+          echo "VCPKG_ROOT=$HOME/vcpkg" >> $GITHUB_ENV
+
+      - name: Cache vcpkg
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/vcpkg/installed
+            ~/.cache/vcpkg/archives
+          key: vcpkg-linux-java-ipopt-${{ hashFiles('ports/**', 'PagmoNet4j/pagmoWrapper/CMakeLists.txt') }}
+          restore-keys: vcpkg-linux-java-ipopt-
+
+      - name: Build native with IPOPT
+        env:
+          PAGMONET4J_ROOT: ${{ github.workspace }}/PagmoNet4j
+          PAGMONET4J_FEATURES: nlopt,ipopt
+        run: pwsh PagmoNet4j.ipopt/scripts/build-native.ps1 -Configuration Release
+
+      - name: Dump IPOPT build logs on failure
+        if: failure()
+        run: |
+          for f in ~/vcpkg/buildtrees/coin-or-ipopt/config-*.log; do
+            [ -f "$f" ] || continue
+            echo "========== $f =========="
+            cat "$f"
+          done
+          for f in ~/vcpkg/buildtrees/coin-or-ipopt/build-*-err.log; do
+            [ -f "$f" ] || continue
+            echo "========== $f (last 200 lines) =========="
+            tail -200 "$f"
+          done
+
+      - name: Run tests
+        env:
+          PAGMO4J_NATIVE_DIR: ${{ github.workspace }}/PagmoNet4j/pagmoWrapper/build
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon test
+        working-directory: PagmoNet4j.ipopt
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install build tools
+        run: brew install autoconf autoconf-archive automake libtool swig powershell micromamba
+
+      - name: Install MUMPS and IPOPT (macOS via conda-forge)
+        run: |
+          micromamba create -c conda-forge -p $HOME/mumps-env mumps-seq ipopt -y
+          echo "MUMPS_PREFIX=$HOME/mumps-env" >> $GITHUB_ENV
+          echo "IPOPT_PREFIX=$HOME/mumps-env" >> $GITHUB_ENV
+          sudo mkdir -p /usr/local/lib
+          for lib in "$HOME/mumps-env/lib/lib"*mumps*.dylib \
+                     "$HOME/mumps-env/lib/libpord"*.dylib \
+                     "$HOME/mumps-env/lib/libipopt"*.dylib; do
+            [ -f "$lib" ] || continue
+            base=$(basename "$lib")
+            sudo ln -sf "$lib" "/usr/local/lib/$base"
+            noseq="${base/_seq/}"
+            [ "$noseq" != "$base" ] && sudo ln -sf "$lib" "/usr/local/lib/$noseq"
+          done
+          SDK=$(xcrun --show-sdk-path 2>/dev/null || true)
+          if [ -n "$SDK" ] && [ ! -f "$SDK/usr/lib/libm.tbd" ]; then
+            printf '--- !tapi-tbd\ntbd-version: 4\ntargets: [ arm64-apple-macos14.0, x86_64-apple-macos14.0 ]\ninstall-name: /usr/lib/libm.dylib\n...\n' \
+              | sudo tee "$SDK/usr/lib/libm.tbd" > /dev/null 2>&1 || true
+          fi
+
+      - name: Regenerate IPOPT-enabled Java bindings (superset)
+        run: |
+          mkdir -p PagmoNet4j.ipopt/src/generated/java/io/github/samthegliderpilot/pagmonet4j
+          mkdir -p PagmoNet4j/pagmoWrapper/generated
+          swig -java -c++ \
+            -package "io.github.samthegliderpilot.pagmonet4j" \
+            -outdir PagmoNet4j.ipopt/src/generated/java/io/github/samthegliderpilot/pagmonet4j \
+            -o PagmoNet4j/pagmoWrapper/generated/pagmonet4j_wrap.cxx \
+            -DPAGMO_WITH_IPOPT_JNI \
+            -Iswig \
+            -Inative \
+            swig/Pagmo4jSwigInterface.i
+
+      - name: Bootstrap vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg ~/vcpkg --depth 1
+          ~/vcpkg/bootstrap-vcpkg.sh -disableMetrics
+          echo "VCPKG_ROOT=$HOME/vcpkg" >> $GITHUB_ENV
+
+      - name: Cache vcpkg
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/vcpkg/installed
+            ~/.cache/vcpkg/archives
+          key: vcpkg-macos-java-ipopt-v3-${{ hashFiles('ports/**', 'PagmoNet4j/pagmoWrapper/CMakeLists.txt') }}
+          restore-keys: vcpkg-macos-java-ipopt-v3-
+
+      - name: Build native with IPOPT
+        env:
+          PAGMONET4J_ROOT: ${{ github.workspace }}/PagmoNet4j
+          PAGMONET4J_FEATURES: nlopt,ipopt
+        run: pwsh PagmoNet4j.ipopt/scripts/build-native.ps1 -Configuration Release
+
+      - name: Dump cmake link line on failure
+        if: failure()
+        run: |
+          linktxt="PagmoNet4j/pagmoWrapper/build/CMakeFiles/pagmonet4j.dir/link.txt"
+          echo "========== link.txt =========="
+          cat "$linktxt" 2>/dev/null || echo "(link.txt not found)"
+          echo "========== libm references in build.make =========="
+          grep -rn "libm" PagmoNet4j/pagmoWrapper/build/CMakeFiles/pagmonet4j.dir/ 2>/dev/null || echo "(no libm references found)"
+
+      - name: Dump IPOPT build logs on failure
+        if: failure()
+        run: |
+          for f in ~/vcpkg/buildtrees/coin-or-ipopt/config-*.log; do
+            [ -f "$f" ] || continue
+            echo "========== $f =========="
+            cat "$f"
+          done
+          for f in ~/vcpkg/buildtrees/coin-or-ipopt/build-*-err.log; do
+            [ -f "$f" ] || continue
+            echo "========== $f (last 200 lines) =========="
+            tail -200 "$f"
+          done
+
+      - name: Run tests
+        env:
+          PAGMO4J_NATIVE_DIR: ${{ github.workspace }}/PagmoNet4j/pagmoWrapper/build
+        run: |
+          chmod +x gradlew
+          export DYLD_LIBRARY_PATH="$HOME/mumps-env/lib:$(pwd)/../PagmoNet4j/pagmoWrapper/build:$DYLD_LIBRARY_PATH"
+          ./gradlew --no-daemon test
+        working-directory: PagmoNet4j.ipopt
