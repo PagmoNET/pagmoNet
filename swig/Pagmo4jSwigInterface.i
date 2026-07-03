@@ -446,9 +446,7 @@ PAGMO4J_SIMPLE_ALGO_CODE(null_algorithm)
 PAGMO4J_SIMPLE_ALGO_CODE(pso_gen)
 PAGMO4J_SIMPLE_ALGO_CODE(xnes)
 PAGMO4J_SIMPLE_ALGO_CODE(nlopt)
-#ifdef PAGMO_WITH_IPOPT_JNI
 PAGMO4J_SIMPLE_ALGO_CODE(ipopt)
-#endif
 
 // ── sade/sea/sga typed log projections ───────────────────────────────────────
 // Indexed accessors avoid the full std::vector<> JNI wrapper infrastructure.
@@ -910,10 +908,10 @@ namespace pagmo {
     %include "swigInterfaceFiles/algorithms/de1220.i"
     %include "swigInterfaceFiles/algorithms/gaco.i"
     %include "swigInterfaceFiles/algorithms/gwo.i"
-#ifdef PAGMO_WITH_IPOPT_JNI
-    namespace Ipopt { typedef int Index; typedef int ApplicationReturnStatus; }
+    // IPOPT ships in every build: the ipopt algorithm loads libipopt at runtime via dlopen
+    // (nothing IPOPT is linked), so the binding is unconditional. The shared ipopt.i now uses
+    // plain int (no Ipopt::Index), so no Ipopt namespace shim is needed.
     %include "swigInterfaceFiles/algorithms/ipopt.i"
-#endif
     %include "swigInterfaceFiles/algorithms/nlopt.i"
     %include "swigInterfaceFiles/algorithms/not_population_based.i"
     %include "swigInterfaceFiles/algorithms/nspso.i"

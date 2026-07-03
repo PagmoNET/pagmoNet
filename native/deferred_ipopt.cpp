@@ -143,6 +143,16 @@ void deferred_ipopt::set_numeric_options(const std::map<std::string, double> &m)
     }
 }
 
+bool ipopt_available() noexcept
+{
+    try {
+        (void)get_ipopt_api(); // loads libipopt (and caches it) if resolvable
+        return true;
+    } catch (...) {
+        return false;
+    }
+}
+
 std::string deferred_ipopt::get_extra_info() const
 {
     std::string s = "\tLast optimisation return code: " + std::to_string(m_last_opt_res)

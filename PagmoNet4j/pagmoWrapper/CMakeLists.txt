@@ -46,25 +46,13 @@ find_package(SWIG 4.0 REQUIRED)
 message(STATUS "SWIG ${SWIG_VERSION} — wrap file will be generated from .i sources")
 
 # ── pagmo2 + dependencies via vcpkg ──────────────────────────────────────────
-# pagmo_export.cmake references pagmo::IPOPT::libipopt when pagmo was built with
-# IPOPT support. Pre-create the imported target so find_package(Pagmo) succeeds.
-# On Windows without MKL we create a dummy INTERFACE target (no actual library)
-# to satisfy the reference without pulling in ipopt.lib and its BLAS dependencies.
-find_library(_pagmo_ipopt_lib NAMES ipopt ipopt-3
-    HINTS ${CMAKE_PREFIX_PATH}
-    PATH_SUFFIXES lib
-    NO_DEFAULT_PATH
-    NO_CMAKE_FIND_ROOT_PATH)
+# We never link IPOPT (the ipopt algorithm is loaded at runtime via dlopen -- see
+# deferred_ipopt.cpp). If the installed pagmo was built with IPOPT, its export file may
+# still reference pagmo::IPOPT::libipopt; pre-create a harmless INTERFACE stub so
+# find_package(Pagmo) resolves without pulling in any IPOPT library.
 if(NOT TARGET pagmo::IPOPT::libipopt)
-    if(_pagmo_ipopt_lib)
-        add_library(pagmo::IPOPT::libipopt UNKNOWN IMPORTED)
-        set_target_properties(pagmo::IPOPT::libipopt PROPERTIES
-            IMPORTED_LOCATION "${_pagmo_ipopt_lib}")
-    else()
-        add_library(pagmo::IPOPT::libipopt INTERFACE IMPORTED)
-    endif()
+    add_library(pagmo::IPOPT::libipopt INTERFACE IMPORTED)
 endif()
-unset(_pagmo_ipopt_lib)
 
 find_package(Pagmo REQUIRED)
 find_package(NLopt CONFIG QUIET)
@@ -93,60 +81,27 @@ if(APPLE)
     unset(_tgt)
 endif()
 
-# ── Detect whether IPOPT is actually available for linking ────────────────────
-# This MUST come before the interface-stripping blocks below so that
-# PAGMO_WITH_IPOPT is preserved when we ARE linking IPOPT ourselves.
-find_library(PAGMO_IPOPT_LIB NAMES ipopt ipopt-3
-    HINTS ${CMAKE_PREFIX_PATH}
-    PATH_SUFFIXES lib
-    NO_DEFAULT_PATH
-    NO_CMAKE_FIND_ROOT_PATH)
-
-# conda-forge IPOPT is a pre-built DLL that bundles its own BLAS (OpenBLAS);
-# no MKL check needed.
-
-# Strip PAGMO_WITH_IPOPT from Pagmo::pagmo's INTERFACE_COMPILE_DEFINITIONS only
-# when NOT linking IPOPT ourselves. When building with IPOPT, PAGMO_WITH_IPOPT
-# must remain defined so pagmo's ipopt.hpp does not trip its #error guard.
-# On CI runners pagmo2[core,nlopt] can auto-detect a system IPOPT via pkg-config;
-# in that case we strip it to avoid an unintended IPOPT dependency.
+# ── Keep IPOPT out of the link ────────────────────────────────────────────────
+# We never link IPOPT (the ipopt algorithm reaches libipopt at runtime via dlopen).
+# Strip PAGMO_WITH_IPOPT (and PAGMO_WITH_NLOPT, which the wrapper controls itself) from
+# Pagmo::pagmo's exported INTERFACE_COMPILE_DEFINITIONS so pagmo's ipopt.hpp / nlopt.hpp
+# are not accidentally enabled by how the upstream pagmo happened to be built.
 get_target_property(_pagmo_iface_defs Pagmo::pagmo INTERFACE_COMPILE_DEFINITIONS)
 if(_pagmo_iface_defs)
-    if(PAGMO_IPOPT_LIB)
-        list(REMOVE_ITEM _pagmo_iface_defs PAGMO_WITH_NLOPT)
-    else()
-        list(REMOVE_ITEM _pagmo_iface_defs PAGMO_WITH_IPOPT PAGMO_WITH_NLOPT)
-    endif()
+    list(REMOVE_ITEM _pagmo_iface_defs PAGMO_WITH_IPOPT PAGMO_WITH_NLOPT)
     set_target_properties(Pagmo::pagmo PROPERTIES
         INTERFACE_COMPILE_DEFINITIONS "${_pagmo_iface_defs}")
 endif()
 unset(_pagmo_iface_defs)
 
-# When not linking IPOPT ourselves, strip the IPOPT library from Pagmo's
-# transitive link dependencies so ipopt.lib is not pulled in on Windows.
-if(NOT PAGMO_IPOPT_LIB)
-    get_target_property(_pagmo_iface_libs Pagmo::pagmo INTERFACE_LINK_LIBRARIES)
-    if(_pagmo_iface_libs)
-        list(FILTER _pagmo_iface_libs EXCLUDE REGEX "ipopt|IPOPT")
-        set_target_properties(Pagmo::pagmo PROPERTIES
-            INTERFACE_LINK_LIBRARIES "${_pagmo_iface_libs}")
-    endif()
-    unset(_pagmo_iface_libs)
+# Strip any IPOPT library from Pagmo's transitive link deps so ipopt.lib is never pulled in.
+get_target_property(_pagmo_iface_libs Pagmo::pagmo INTERFACE_LINK_LIBRARIES)
+if(_pagmo_iface_libs)
+    list(FILTER _pagmo_iface_libs EXCLUDE REGEX "ipopt|IPOPT")
+    set_target_properties(Pagmo::pagmo PROPERTIES
+        INTERFACE_LINK_LIBRARIES "${_pagmo_iface_libs}")
 endif()
-
-if(PAGMO_IPOPT_LIB)
-    message(STATUS "IPOPT library found — IPOPT JNI wrappers will be generated")
-    set(SWIG_IPOPT_FLAG "-DPAGMO_WITH_IPOPT_JNI")
-    find_path(PAGMO_IPOPT_HEADERS IpReturnCodes.hpp
-        HINTS ${CMAKE_PREFIX_PATH}
-        PATH_SUFFIXES include/coin-or include/coin
-        NO_DEFAULT_PATH
-        NO_CMAKE_FIND_ROOT_PATH)
-else()
-    message(STATUS "IPOPT library not found (or MKL unavailable on Windows) — IPOPT JNI wrappers will NOT be generated")
-    set(SWIG_IPOPT_FLAG "")
-    set(PAGMO_IPOPT_HEADERS "${CMAKE_SOURCE_DIR}/ipopt_stubs")
-endif()
+unset(_pagmo_iface_libs)
 
 # ── Locate pagmoNet ───────────────────────────────────────────────────────────
 # Probe order: (1) pagmoNet submodule inside PagmoNet4j (standalone),
@@ -186,12 +141,11 @@ add_custom_command(
         -package "io.github.samthegliderpilot.pagmonet4j"
         -outdir "${SWIG_JAVA_OUTDIR}"
         -o "${JNI_WRAP_SRC}"
-        ${SWIG_IPOPT_FLAG}
         "-I${PAGMONET_ROOT}/swig"
         "-I${PAGMONET_ROOT}/native"
         "${PAGMONET_ROOT}/swig/Pagmo4jSwigInterface.i"
     DEPENDS ${SWIG_INTERFACE_FILES}
-    COMMENT "Generating SWIG JNI wrapper from .i sources (IPOPT=${PAGMO_IPOPT_LIB})"
+    COMMENT "Generating SWIG JNI wrapper from .i sources (ipopt bindings are unconditional)"
     VERBATIM)
 
 # ── Build the JNI shared library ─────────────────────────────────────────────
@@ -204,63 +158,25 @@ target_include_directories(pagmonet4j PRIVATE
     ${JNI_INCLUDE_DIRS}
     ${PAGMOWRAPPER_SRC}
     "${PAGMONET_ROOT}/swig"
-    "${PAGMO_IPOPT_HEADERS}"
 )
 
 target_link_libraries(pagmonet4j PRIVATE
     Pagmo::pagmo
     $<$<TARGET_EXISTS:NLopt::nlopt>:NLopt::nlopt>
+    ${CMAKE_DL_LIBS}   # dlopen/dlsym for deferred_ipopt on Unix; no-op on Windows
 )
 
-# conda-forge IPOPT bundles its own BLAS in ipopt.dll — no additional linking needed.
-
+# We never link IPOPT, so PAGMO_WITH_IPOPT stays undefined (pagmo's ipopt.hpp is not used;
+# the deferred_ipopt UDA reaches libipopt via dlopen). NLopt is controlled by the wrapper.
 if(MSVC)
-    if(PAGMO_IPOPT_LIB)
-        target_compile_options(pagmonet4j PRIVATE /UPAGMO_WITH_NLOPT /bigobj)
-    else()
-        target_compile_options(pagmonet4j PRIVATE /UPAGMO_WITH_NLOPT /UPAGMO_WITH_IPOPT /bigobj)
-    endif()
-    target_compile_definitions(pagmonet4j PRIVATE PAGMO_STATIC_BUILD)
+    target_compile_options(pagmonet4j PRIVATE /UPAGMO_WITH_NLOPT /UPAGMO_WITH_IPOPT /bigobj)
 else()
-    if(PAGMO_IPOPT_LIB)
-        target_compile_options(pagmonet4j PRIVATE -UPAGMO_WITH_NLOPT)
-    else()
-        target_compile_options(pagmonet4j PRIVATE -UPAGMO_WITH_NLOPT -UPAGMO_WITH_IPOPT)
-    endif()
-    target_compile_definitions(pagmonet4j PRIVATE PAGMO_STATIC_BUILD)
+    target_compile_options(pagmonet4j PRIVATE -UPAGMO_WITH_NLOPT -UPAGMO_WITH_IPOPT)
 endif()
+target_compile_definitions(pagmonet4j PRIVATE PAGMO_STATIC_BUILD)
 
-if(PAGMO_IPOPT_LIB)
-    target_compile_definitions(pagmonet4j PRIVATE PAGMO_WITH_IPOPT PAGMONET4J_WITH_IPOPT)
-    # Link IPOPT and all transitive deps (BLAS, LAPACK, MUMPS) via pkg-config.
-    # Use raw IPOPT_PC_LINK_LIBRARIES + IPOPT_PC_LIBRARY_DIRS, NOT IMPORTED_TARGET,
-    # so linker flags (-ldmumps_seq etc.) pass through verbatim without cmake trying
-    # to resolve them to cmake targets. Mirrors pagmoNet/native/CMakeLists.txt.
-    find_package(PkgConfig QUIET)
-    if(PKG_CONFIG_FOUND)
-        pkg_check_modules(IPOPT_PC QUIET ipopt)
-    endif()
-    if(IPOPT_PC_FOUND)
-        if(APPLE)
-            # On macOS Xcode 16+, cmake resolves -lm (from ipopt.pc) to the full
-            # path of libm.tbd in the Xcode SDK. cmake's Makefile generator then
-            # adds libm.tbd as a file dependency; when the file doesn't build,
-            # make fails. Use IPOPT_PC_LDFLAGS (raw pkg-config flags) via
-            # target_link_options so -lm goes straight to the linker as a flag
-            # (linker resolves it via libSystem.B) without cmake creating a file dep.
-            separate_arguments(_ipopt_ldflags UNIX_COMMAND "${IPOPT_PC_LDFLAGS}")
-            list(FILTER _ipopt_ldflags EXCLUDE REGEX "^-lm$")
-            target_link_options(pagmonet4j PRIVATE ${_ipopt_ldflags})
-            target_include_directories(pagmonet4j PRIVATE ${IPOPT_PC_INCLUDE_DIRS})
-            unset(_ipopt_ldflags)
-        else()
-            target_link_libraries(pagmonet4j PRIVATE ${IPOPT_PC_LINK_LIBRARIES})
-            target_link_directories(pagmonet4j PRIVATE ${IPOPT_PC_LIBRARY_DIRS})
-        endif()
-    else()
-        target_link_libraries(pagmonet4j PRIVATE "${PAGMO_IPOPT_LIB}")
-    endif()
-endif()
+# (No IPOPT link block: the ipopt algorithm reaches IPOPT at runtime via dlopen. The loader
+# lives in deferred_ipopt.cpp / dynamic_library.cpp, both compiled from the shared native dir.)
 
 if(APPLE)
     set_target_properties(pagmonet4j PROPERTIES

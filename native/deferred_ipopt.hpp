@@ -90,6 +90,11 @@ private:
     mutable log_type m_log;
 };
 
+// Returns true if a libipopt can be loaded on this machine (companion package, system
+// install, or the PAGMONET_IPOPT_LIBRARY override). Loads it as a side effect if found.
+// Never throws. Useful for "is IPOPT usable here?" probes in the managed layers.
+bool ipopt_available() noexcept;
+
 } // namespace pagmoNet
 
 PAGMO_S11N_ALGORITHM_EXPORT_KEY(pagmoNet::deferred_ipopt)

@@ -16,6 +16,7 @@
 #include "problem.h"
 #include "algorithm_callback.h"
 #include "bfe_callback.h"
+#include "deferred_ipopt.hpp"
 
 #ifndef PAGMONET_EXPORT
   #if defined(_WIN32) || defined(_WIN64)
@@ -389,11 +390,9 @@ PAGMONET_EXPORT bool pagmonet4j_has_nlopt_support()
 
 PAGMONET_EXPORT bool pagmonet4j_has_ipopt_support()
 {
-#if defined(PAGMONET4J_WITH_IPOPT)
-    return true;
-#else
-    return false;
-#endif
+    // The ipopt algorithm ships in every build; report whether a libipopt can actually be
+    // loaded at runtime (companion package, system install, or PAGMONET_IPOPT_LIBRARY).
+    return pagmoNet::ipopt_available();
 }
 
 } // extern "C"
