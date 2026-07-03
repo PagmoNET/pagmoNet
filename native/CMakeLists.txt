@@ -47,24 +47,12 @@ set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 # static libraries. Linking them into PagmoWrapper produces a self-contained
 # shared library with no pagmo/boost/tbb/nlopt/ipopt runtime dependencies —
 # only the standard C++ runtime is required at runtime.
-# When pagmo2 is built with IPOPT support, pagmo_export.cmake references
-# pagmo::IPOPT::libipopt as a transitive link dependency. Pagmo's own config
-# only pre-creates the 'header' component target; we must pre-create
-# 'libipopt' so the export file can resolve it during find_package(Pagmo).
+# We never link IPOPT (the ipopt algorithm is loaded at runtime via dlopen -- see
+# deferred_ipopt.cpp). If the installed pagmo happened to be built with IPOPT, its
+# export file may still reference pagmo::IPOPT::libipopt; pre-create a harmless INTERFACE
+# stub so find_package(Pagmo) resolves without pulling in any IPOPT library.
 if(NOT TARGET pagmo::IPOPT::libipopt)
-    if(PAGMONET_WITH_IPOPT)
-        find_library(_pagmo_ipopt_lib NAMES ipopt ipopt-3)
-        if(_pagmo_ipopt_lib)
-            add_library(pagmo::IPOPT::libipopt UNKNOWN IMPORTED)
-            set_target_properties(pagmo::IPOPT::libipopt PROPERTIES
-                IMPORTED_LOCATION "${_pagmo_ipopt_lib}")
-        else()
-            add_library(pagmo::IPOPT::libipopt INTERFACE IMPORTED)
-        endif()
-    else()
-        add_library(pagmo::IPOPT::libipopt INTERFACE IMPORTED)
-    endif()
-    unset(_pagmo_ipopt_lib)
+    add_library(pagmo::IPOPT::libipopt INTERFACE IMPORTED)
 endif()
 
 find_package(Pagmo REQUIRED)
@@ -76,10 +64,17 @@ find_package(Boost REQUIRED COMPONENTS serialization)
 
 # nloptGenerated.cxx is always compiled; it is empty when NLopt is not available
 # (the SWIG interface guards it with #if defined(PAGMO_WITH_NLOPT)).
+#
+# The IPOPT algorithm is always compiled in but links no IPOPT: nlp_marshaller.cpp is the
+# IPOPT-free marshalling core, deferred_ipopt.cpp is the UDA that dlopen's a libipopt at
+# runtime, and dynamic_library.cpp is the cross-platform loader. See deferred_ipopt.hpp.
 add_library(PagmoWrapper SHARED
     GeneratedWrappers.cxx
     managed_bridge.cpp
     nloptGenerated.cxx
+    nlp_marshaller.cpp
+    dynamic_library.cpp
+    deferred_ipopt.cpp
 )
 
 target_include_directories(PagmoWrapper PRIVATE
@@ -90,6 +85,7 @@ target_include_directories(PagmoWrapper PRIVATE
 target_link_libraries(PagmoWrapper PRIVATE
     Pagmo::pagmo
     Boost::serialization
+    ${CMAKE_DL_LIBS}   # dlopen/dlsym for deferred_ipopt on Unix; no-op on Windows
 )
 
 # Pagmo::pagmo exports PAGMO_WITH_NLOPT/IPOPT as INTERFACE compile definitions
@@ -121,8 +117,11 @@ endif()
 # Optional solver support. Use PAGMONET_WITH_* names to avoid collision with
 # pagmo's own cmake-exported PAGMO_WITH_* variables (which reflect how the
 # upstream pagmo library was built, not how we want to build our wrapper).
+# IPOPT is no longer a compile-time option: the ipopt algorithm is always built in and
+# loads libipopt at runtime via dlopen (deferred_ipopt.cpp), so no IPOPT link/toolchain is
+# needed to build the base wrapper. NLopt remains an opt-in compile-time link; SNOPT7 is a
+# post-1.0 placeholder (it will also become deferred-load, never a compile-time link).
 option(PAGMONET_WITH_NLOPT  "Build PagmoWrapper with NLopt support"  OFF)
-option(PAGMONET_WITH_IPOPT  "Build PagmoWrapper with IPOPT support"  OFF)
 option(PAGMONET_WITH_SNOPT7 "Build PagmoWrapper with SNOPT7 support" OFF)
 
 if(PAGMONET_WITH_NLOPT)
@@ -131,66 +130,8 @@ if(PAGMONET_WITH_NLOPT)
     target_link_libraries(PagmoWrapper PRIVATE NLopt::nlopt)
 endif()
 
-if(PAGMONET_WITH_IPOPT)
-    # Three cases in order of preference:
-    # 1. cmake config package (future vcpkg versions or other setups)
-    # 2. Windows/vcpkg: pagmo::IPOPT::libipopt was pre-created above via find_library;
-    #    Pagmo::pagmo links it transitively. Only the compile definition and include
-    #    path are needed here — no explicit target_link_libraries call required.
-    # 3. Linux/macOS: pkg-config (apt pagmo or source build).
-    find_package(Ipopt CONFIG QUIET)
-    if(TARGET Ipopt::Ipopt)
-        target_compile_definitions(PagmoWrapper PRIVATE PAGMO_WITH_IPOPT)
-        if(APPLE)
-            # Pagmo::pagmo already links libipopt transitively through the
-            # pre-created pagmo::IPOPT::libipopt target above, and ld records it
-            # with the dylib's real install name (@rpath/libipopt.3.dylib). The
-            # overlay port's macOS ipopt-config.cmake points Ipopt::Ipopt at the
-            # dylib-copied-as-a-.a, so linking Ipopt::Ipopt as well adds a SECOND
-            # libipopt load command under a different name (@rpath/libipopt.a).
-            # ld dedupes load commands by install name, but these two names differ
-            # so both survive -- and the @rpath/libipopt.a one is unresolvable at
-            # runtime, breaking dlopen of the wrapper. So on macOS take only
-            # Ipopt::Ipopt's include dirs and let the single transitive link
-            # provide the library.
-            get_target_property(_ipopt_inc Ipopt::Ipopt INTERFACE_INCLUDE_DIRECTORIES)
-            if(_ipopt_inc)
-                target_include_directories(PagmoWrapper PRIVATE ${_ipopt_inc})
-            endif()
-            unset(_ipopt_inc)
-        else()
-            target_link_libraries(PagmoWrapper PRIVATE Ipopt::Ipopt)
-        endif()
-    elseif(WIN32)
-        # conda-forge IPOPT is a pre-built DLL that bundles its own BLAS (OpenBLAS).
-        # No MKL or separate BLAS linking needed — ipopt.dll handles it internally.
-        find_path(IPOPT_INCLUDE_DIR NAMES IpIpoptApplication.hpp PATH_SUFFIXES coin-or)
-        target_compile_definitions(PagmoWrapper PRIVATE PAGMO_WITH_IPOPT)
-        if(IPOPT_INCLUDE_DIR)
-            target_include_directories(PagmoWrapper PRIVATE "${IPOPT_INCLUDE_DIR}")
-        endif()
-    else()
-        find_package(PkgConfig REQUIRED)
-        pkg_check_modules(IPOPT REQUIRED ipopt)
-        target_compile_definitions(PagmoWrapper PRIVATE PAGMO_WITH_IPOPT)
-        if(APPLE)
-            # On macOS Xcode 16+, cmake resolves -lm (from ipopt.pc) to the full
-            # path of libm.tbd in the Xcode SDK. cmake's Makefile generator adds
-            # libm.tbd as a file dependency; when the file doesn't build, make
-            # fails. Use IPOPT_LDFLAGS (raw pkg-config flags) via target_link_options
-            # so -lm goes straight to the linker without cmake creating a file dep.
-            separate_arguments(_ipopt_ldflags UNIX_COMMAND "${IPOPT_LDFLAGS}")
-            list(FILTER _ipopt_ldflags EXCLUDE REGEX "^-lm$")
-            target_link_options(PagmoWrapper PRIVATE ${_ipopt_ldflags})
-            target_include_directories(PagmoWrapper PRIVATE ${IPOPT_INCLUDE_DIRS})
-            unset(_ipopt_ldflags)
-        else()
-            target_link_libraries(PagmoWrapper PRIVATE ${IPOPT_LINK_LIBRARIES})
-            target_include_directories(PagmoWrapper PRIVATE ${IPOPT_INCLUDE_DIRS})
-            target_link_directories(PagmoWrapper PRIVATE ${IPOPT_LIBRARY_DIRS})
-        endif()
-    endif()
-endif()
+# (No IPOPT link block: the ipopt algorithm reaches IPOPT at runtime via dlopen, so there
+# is nothing to find_package/link here. deferred_ipopt.cpp + dynamic_library.cpp handle it.)
 
 if(PAGMONET_WITH_SNOPT7)
     target_compile_definitions(PagmoWrapper PRIVATE PAGMO_WITH_SNOPT7)
