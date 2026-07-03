@@ -395,4 +395,11 @@ PAGMONET_EXPORT bool pagmonet4j_has_ipopt_support()
     return pagmoNet::ipopt_available();
 }
 
+// C#-facing name for the same runtime IPOPT availability probe, P/Invoked by
+// OptionalSolverAvailability.IsIpoptAvailable in the .NET layer.
+PAGMONET_EXPORT bool pagmonet_ipopt_available()
+{
+    return pagmoNet::ipopt_available();
+}
+
 } // extern "C"

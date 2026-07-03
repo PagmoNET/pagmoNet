@@ -178,7 +178,10 @@ public class Test_optional_solver_availability
         var getLastOptimizationResultCode = ipoptType.GetMethod("GetLastOptimizationResultCode", BindingFlags.Public | BindingFlags.Instance);
         Assert.That(getLastOptimizationResultCode, Is.Not.Null, "ipopt should expose primitive last-result status code.");
         var statusCode = (int)getLastOptimizationResultCode!.Invoke(solver, Array.Empty<object>())!;
-        Assert.That(statusCode, Is.Not.EqualTo(0), "ipopt status code should reflect a real optimization result after evolve().");
+        // IPOPT's success codes are Solve_Succeeded (0) and Solved_To_Acceptable_Level (1);
+        // a converged evolve() legitimately reports 0, so accept either as a real result.
+        Assert.That(statusCode, Is.EqualTo(0).Or.EqualTo(1),
+            $"ipopt should report Solve_Succeeded (0) or Solved_To_Acceptable_Level (1) after evolve(); got {statusCode}.");
 
         AssertNoSwigTypeLeaksOnPublicSurface(ipoptType);
     }
