@@ -102,9 +102,9 @@ algorithm logs after each scenario.
 | Per-thread problem cloning (`IThreadCloneableProblem`) | Non-thread-safe problems can participate in threaded paths via `Clone()` |
 | Custom C# algorithms (`IAlgorithm`) | Participates in island/archipelago type-erased flows |
 | NLopt | Statically linked — available out of the box |
-| IPOPT | Statically linked — available out of the box |
+| IPOPT | Provided by the separate `Pagmo.NET.Ipopt` package (EPL-2.0) |
 | SNOPT7 | Not included (proprietary license; build from source with your own license) |
-| macOS (arm64 + x86_64) | Supported — universal binary; NLopt included, IPOPT coming |
+| macOS (arm64 + x86_64) | Supported — universal binary; NLopt included |
 | x86 / ARM | Not supported in v1 |
 | .NET Framework | Not supported |
 
@@ -121,8 +121,9 @@ SWIG handles the repetitive wrapping work across a large API surface. The `.i` i
 file is also a useful starting point for bindings in other languages.
 
 **Where's IPOPT?**
-Included and statically linked on both Windows and Linux.
-`OptionalSolverAvailability.IsIpoptAvailable` returns `true` out of the box.
+IPOPT is not part of this package — it is EPL-2.0-licensed and kept separate from this
+MPL-2.0 package. Install the `Pagmo.NET.Ipopt` package to add it;
+`OptionalSolverAvailability.IsIpoptAvailable` reports whether it is present at runtime.
 
 **Where's SNOPT7?**
 SNOPT7 is proprietary and cannot be bundled. Users with a SNOPT7 license can build
@@ -132,6 +133,13 @@ Pagmo.NET from source with SNOPT7 support — see the
 **Is this affiliated with ESA or the pagmo2 team?**
 No — Pagmo.NET is an independent .NET binding, not affiliated with ESA or the pagmo2
 developers.
+
+## License
+
+Pagmo.NET is licensed under the **MPL-2.0**. It statically links third-party libraries
+under their own licenses (pagmo2 and NLopt under the LGPL, Boost under BSL-1.0, Intel
+oneTBB under Apache-2.0, Eigen3 under MPL-2.0). See
+[THIRD_PARTY_LICENSES.md](https://github.com/samthegliderpilot/Pagmo.NET/blob/main/THIRD_PARTY_LICENSES.md).
 
 ## Links
 

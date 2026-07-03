@@ -27,7 +27,7 @@ Source archives and individual native bundles are available at
 - .NET 10 SDK
 - Visual Studio 2022 / Build Tools 2022 (C++ toolchain)
 - SWIG 4.4.x (for wrapper regeneration only — pre-generated wrappers are checked in)
-- vcpkg with pagmo2: `vcpkg install pagmo2[nlopt,ipopt]:x64-windows-static-md`
+- vcpkg with pagmo2: `vcpkg install pagmo2[nlopt]:x64-windows-static-md`
 
 To regenerate SWIG wrappers after editing the interface file:
 
@@ -39,9 +39,10 @@ SWIG is resolved via `SWIG_EXE` env var, `SWIG_HOME`, or `PATH`.
 
 ### Linux x64
 
-The native library statically links pagmo2, Boost.Serialization, TBB, NLopt, and IPOPT
+The native library statically links pagmo2, Boost.Serialization, TBB, and NLopt
 via vcpkg's `x64-linux-static-pic` triplet — `libPagmoWrapper.so` has no system runtime
-dependencies beyond the standard C++ runtime.
+dependencies beyond the standard C++ runtime. (IPOPT is not part of the base package; it
+ships in the separate `Pagmo.NET.Ipopt` package.)
 
 **One-time setup:**
 
@@ -209,16 +210,16 @@ Concept-first walkthroughs in `docs/`:
 
 ## License
 
-Wrapper code: LGPL-2.1-or-later. See [LICENSE](LICENSE).
+Pagmo.NET is licensed under the **MPL-2.0**. See [LICENSE](LICENSE).
 
-This package bundles pre-built native binaries from the following third-party projects:
+This package bundles pre-built native binaries from the following third-party projects, each under its own license (see [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) and [NOTICE](NOTICE)):
 
 | Component | License | Linking |
 |-----------|---------|---------|
-| pagmo2 | [LGPL-2.1-or-later](https://www.gnu.org/licenses/lgpl-2.1) | Static |
+| pagmo2 | [LGPL-3.0-or-later / GPL-3.0-or-later](https://www.gnu.org/licenses/lgpl-3.0) | Static |
 | Boost.Serialization | [BSL-1.0](https://www.boost.org/users/license.html) | Static |
 | NLopt | [LGPL-2.1-or-later](https://www.gnu.org/licenses/lgpl-2.1) | Static |
 | Intel TBB | [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0) | Static |
 | Eigen3 | [MPL-2.0](https://www.mozilla.org/en-US/MPL/2.0/) | Header-only (no binary) |
 
-All native components are statically linked into the distributed `libPagmoWrapper` binary. Source code for all components is available via their upstream repositories; rebuild from source for relinking under LGPL terms.
+pagmo2 and NLopt are statically linked under the LGPL; you may modify them and relink `PagmoWrapper` against your modified versions. Source for all bundled components is available from their upstream repositories.

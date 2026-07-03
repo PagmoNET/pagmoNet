@@ -133,8 +133,8 @@ publishing {
                 url.set("https://github.com/samthegliderpilot/PagmoNet4j.ipopt")
                 licenses {
                     license {
-                        name.set("LGPL-2.1-or-later")
-                        url.set("https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html")
+                        name.set("EPL-2.0")
+                        url.set("https://www.eclipse.org/legal/epl-2.0/")
                     }
                 }
                 developers {

@@ -1,13 +1,12 @@
 # Third-Party Licenses
 
-Pagmo.NET ships native runtime libraries for Windows x64 and Linux x64. Both libraries
-statically link a set of third-party components whose licenses are reproduced below.
+Pagmo.NET is licensed under the MPL-2.0. The distributed native runtime library
+(`PagmoWrapper.dll` on Windows, `libPagmoWrapper.so` on Linux, `libPagmoWrapper.dylib`
+on macOS) statically links the third-party components below, each of which retains its
+own license. IPOPT is **not** part of this package; it is provided separately by the
+`Pagmo.NET.Ipopt` companion package under EPL-2.0.
 
-**Windows x64 (`PagmoWrapper.dll`):** pagmo2, Boost 1.90, TBB, NLopt, Eigen3, IPOPT,
-CoinUtils, Intel oneAPI MKL (BLAS/LAPACK backend).
-
-**Linux x64 (`libPagmoWrapper.so`):** pagmo2, Boost 1.90, TBB, NLopt, Eigen3, IPOPT,
-CoinUtils, OpenBLAS, LAPACK, zlib, bzip2.
+Bundled components: pagmo2, Boost, Intel oneTBB, NLopt, Eigen3.
 
 ---
 
@@ -17,11 +16,13 @@ CoinUtils, OpenBLAS, LAPACK, zlib, bzip2.
 **Source:** https://github.com/esa/pagmo2
 Full license text: https://www.gnu.org/licenses/lgpl-3.0.txt
 
+pagmo2 is used under the LGPL. You may modify pagmo2 and relink `PagmoWrapper` against
+your modified version; its source is available at the URL above.
+
 ---
 
 ## Boost C++ Libraries
 
-**Version:** 1.90
 **License:** Boost Software License 1.0
 **Source:** https://www.boost.org/
 
@@ -53,7 +54,7 @@ DEALINGS IN THE SOFTWARE.
 
 ---
 
-## Intel oneAPI Threading Building Blocks (TBB)
+## Intel oneAPI Threading Building Blocks (oneTBB)
 
 **License:** Apache License 2.0
 **Source:** https://github.com/uxlfoundation/oneTBB
@@ -63,108 +64,17 @@ Full license text: https://www.apache.org/licenses/LICENSE-2.0.txt
 
 ## NLopt
 
-**License:** GNU Lesser General Public License v2.1 or later (LGPL-2.1+)
+**License:** GNU Lesser General Public License v2.1 or later (LGPL-2.1+); some routines under the MIT license
 **Source:** https://github.com/stevengj/nlopt
 Full license text: https://www.gnu.org/licenses/lgpl-2.1.txt
+
+NLopt is used under the LGPL. You may modify NLopt and relink `PagmoWrapper` against
+your modified version; its source is available at the URL above.
 
 ---
 
 ## Eigen3
 
-**License:** Mozilla Public License 2.0 (MPL-2.0)
+**License:** Mozilla Public License 2.0 (MPL-2.0); some modules under BSD-3-Clause
 **Source:** https://eigen.tuxfamily.org/
 Full license text: https://www.mozilla.org/en-US/MPL/2.0/
-
----
-
-## COIN-OR IPOPT and CoinUtils
-
-**License:** Eclipse Public License 2.0 (EPL-2.0)
-**Source:** https://github.com/coin-or/Ipopt
-Full license text: https://www.eclipse.org/legal/epl-2.0/
-
----
-
-## Intel oneAPI Math Kernel Library (MKL) *(Windows only)*
-
-IPOPT on Windows uses Intel MKL as its BLAS/LAPACK backend (statically linked via vcpkg
-`intel-mkl:x64-windows-static-md`).
-
-**License:** Intel Simplified Software License (ISSL)
-**Source:** https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html
-Full license text: https://www.intel.com/content/www/us/en/developer/articles/license/end-user-license-agreement.html
-
----
-
-## OpenBLAS *(Linux only)*
-
-**License:** BSD 3-Clause License
-**Source:** https://github.com/OpenMathLib/OpenBLAS
-
-```
-Copyright (c) 2011-2014, The OpenBLAS Project
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-1. Redistributions of source code must retain the above copyright notice,
-   this list of conditions and the following disclaimer.
-2. Redistributions in binary form must reproduce the above copyright notice,
-   this list of conditions and the following disclaimer in the documentation
-   and/or other materials provided with the distribution.
-3. Neither the name of the OpenBLAS project nor the names of its contributors
-   may be used to endorse or promote products derived from this software
-   without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
-LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-POSSIBILITY OF SUCH DAMAGE.
-```
-
----
-
-## LAPACK *(Linux only)*
-
-**License:** BSD 3-Clause License
-**Source:** https://www.netlib.org/lapack/
-Full license text: https://www.netlib.org/lapack/LICENSE.txt
-
----
-
-## zlib *(Linux only)*
-
-**License:** zlib/libpng License
-**Source:** https://zlib.net/
-
-```
-Copyright (C) 1995-2024 Jean-loup Gailly and Mark Adler
-
-This software is provided 'as-is', without any express or implied
-warranty.  In no event will the authors be held liable for any damages
-arising from the use of this software.
-
-Permission is granted to anyone to use this software for any purpose,
-including commercial applications, and to alter it and redistribute it
-freely, subject to the following restrictions:
-1. The origin of this software must not be misrepresented; you must not
-   claim that you wrote the original software.
-2. Altered source versions must be plainly marked as such, and must not be
-   misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-```
-
----
-
-## bzip2 *(Linux only)*
-
-**License:** BSD-style License
-**Source:** https://sourceware.org/bzip2/
-Full license text: https://sourceware.org/git/?p=bzip2.git;a=blob;f=LICENSE

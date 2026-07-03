@@ -42,5 +42,4 @@ dotnet test Pagmo.NET.Ipopt.csproj -p:Platform=x64
 
 ## License
 
-LGPL-2.1-or-later. See [LICENSE](LICENSE).  
-IPOPT: EPL-2.0. See [NOTICE](NOTICE).
+EPL-2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).

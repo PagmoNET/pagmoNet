@@ -55,4 +55,4 @@ export PAGMO4J_NATIVE_DIR="pagmoWrapper/build"
 
 ## License
 
-LGPL-2.1-or-later. See [LICENSE](LICENSE).
+MPL-2.0. See [LICENSE](LICENSE).

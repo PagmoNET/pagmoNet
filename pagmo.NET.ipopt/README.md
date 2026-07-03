@@ -59,21 +59,21 @@ int code = algo.GetLastOptimizationResultCode();
 
 ## License
 
-Wrapper code: LGPL-2.1-or-later. See [LICENSE](LICENSE).
+This package is licensed under the **EPL-2.0**, matching IPOPT. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
 
-This package bundles pre-built native binaries from the following third-party projects:
+It bundles pre-built native binaries from the following third-party projects, each under its own license:
 
 | Component | License | Linking |
 |-----------|---------|---------|
 | IPOPT | [EPL-2.0](https://opensource.org/licenses/EPL-2.0) | Static on Linux; dynamic (bundled DLL/dylib) on Windows/macOS |
-| MUMPS | [LGPL-2.1-or-later](https://www.gnu.org/licenses/lgpl-2.1) | Dynamic (bundled), part of conda-forge IPOPT on Windows/macOS |
+| MUMPS | [CeCILL-C](https://cecill.info/licences/Licence_CeCILL-C_V1-en.html) | Dynamic (bundled), part of conda-forge IPOPT on Windows/macOS |
 | OpenBLAS | [BSD-3-Clause](https://opensource.org/licenses/BSD-3-Clause) | Dynamic (bundled), part of conda-forge IPOPT on Windows/macOS |
-| pagmo2 | [LGPL-2.1-or-later](https://www.gnu.org/licenses/lgpl-2.1) | Static (via base Pagmo.NET) |
+| pagmo2 | [LGPL-3.0-or-later / GPL-3.0-or-later](https://www.gnu.org/licenses/lgpl-3.0) | Static (via base Pagmo.NET) |
 | Boost.Serialization | [BSL-1.0](https://www.boost.org/users/license.html) | Static (via base Pagmo.NET) |
 | NLopt | [LGPL-2.1-or-later](https://www.gnu.org/licenses/lgpl-2.1) | Static (via base Pagmo.NET) |
 | Intel TBB | [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0) | Static (via base Pagmo.NET) |
 
-LGPL components are statically embedded in the distributed binary on Linux. The source code for all components is available via their upstream repositories; rebuild from source for relinking under LGPL terms. EPL-2.0 (IPOPT) permits use in proprietary applications without source disclosure obligations.
+pagmo2 and NLopt (from the base package) are statically linked under the LGPL; you may modify them and relink against your modified versions. Source for all bundled components is available from their upstream repositories. EPL-2.0 (IPOPT) permits use in proprietary applications without source-disclosure obligations.
 
 ## Related
 

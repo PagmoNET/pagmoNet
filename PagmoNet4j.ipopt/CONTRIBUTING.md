@@ -47,5 +47,4 @@ $env:PAGMO4J_NATIVE_DIR = "PagmoNet4j/pagmoWrapper/win-build"
 
 ## License
 
-LGPL-2.1-or-later. See [LICENSE](LICENSE).  
-IPOPT: EPL-2.0. See [NOTICE](NOTICE).
+EPL-2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).

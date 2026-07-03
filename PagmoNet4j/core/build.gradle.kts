@@ -126,8 +126,8 @@ publishing {
                 url.set("https://github.com/samthegliderpilot/pagmonet4j")
                 licenses {
                     license {
-                        name.set("LGPL-2.1-or-later")
-                        url.set("https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html")
+                        name.set("MPL-2.0")
+                        url.set("https://www.mozilla.org/en-US/MPL/2.0/")
                     }
                 }
             }

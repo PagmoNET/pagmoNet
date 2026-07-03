@@ -19,4 +19,4 @@ SWIG interface files, shared C++ native bridge, and vcpkg ports for the [PagmoNe
 
 ## License
 
-LGPL-2.1-or-later. See [LICENSE](LICENSE).
+MPL-2.0. See [LICENSE](LICENSE).

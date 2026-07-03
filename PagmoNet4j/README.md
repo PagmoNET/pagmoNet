@@ -120,18 +120,18 @@ For BFE (batch fitness evaluation), implement `has_batch_fitness()` + `batch_fit
 
 ## License
 
-Wrapper code: LGPL-2.1-or-later. See [LICENSE](LICENSE).
+PagmoNet4j is licensed under the **MPL-2.0**. See [LICENSE](LICENSE).
 
-This package bundles pre-built native binaries from the following third-party projects:
+This package bundles pre-built native binaries from the following third-party projects, each under its own license (see [NOTICE](NOTICE)):
 
 | Component | License | Linking |
 |-----------|---------|---------|
-| pagmo2 | [LGPL-2.1-or-later](https://www.gnu.org/licenses/lgpl-2.1) | Static |
+| pagmo2 | [LGPL-3.0-or-later / GPL-3.0-or-later](https://www.gnu.org/licenses/lgpl-3.0) | Static |
 | Boost.Serialization | [BSL-1.0](https://www.boost.org/users/license.html) | Static |
 | NLopt | [LGPL-2.1-or-later](https://www.gnu.org/licenses/lgpl-2.1) | Static |
 | Intel TBB | [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0) | Static |
 
-All bundled components are statically linked into the native shared library. Source code for all components is available via their upstream repositories; rebuild from source for relinking under LGPL terms.
+pagmo2 and NLopt are statically linked under the LGPL; you may modify them and relink `pagmonet4j` against your modified versions. Source for all bundled components is available from their upstream repositories.
 
 ## Related
 

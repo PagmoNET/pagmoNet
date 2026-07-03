@@ -23,7 +23,7 @@
     <!-- Version comes from ./Directory.Build.props (single source); CI overrides via -p:Version=. -->
     <PackageId>Pagmo.NET.Ipopt</PackageId>
     <Description>Pagmo.NET with the IPOPT (Interior Point OPTimizer) nonlinear solver bundled. Drop-in superset of Pagmo.NET — reference this OR Pagmo.NET, not both.</Description>
-    <PackageLicenseExpression>LGPL-2.1-or-later</PackageLicenseExpression>
+    <PackageLicenseExpression>EPL-2.0</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/samthegliderpilot/pagmo.NET.ipopt</PackageProjectUrl>
     <RepositoryUrl>https://github.com/samthegliderpilot/pagmo.NET.ipopt</RepositoryUrl>
     <RepositoryType>git</RepositoryType>

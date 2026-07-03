@@ -1,0 +1,38 @@
+THIRD-PARTY NOTICES
+===================
+
+PagmoNet4j is original work licensed under the Mozilla Public License 2.0
+(see LICENSE). The distributed native library (pagmonet4j) statically links
+the third-party components listed below, each of which retains its own license.
+
+  pagmo2 2.19.1
+    COIN-OR / European Space Agency
+    https://github.com/esa/pagmo2
+    GPL-3.0-or-later OR LGPL-3.0-or-later
+    (used here under LGPL-3.0-or-later)
+
+  NLopt
+    Steven G. Johnson and contributors
+    https://github.com/stevengj/nlopt
+    LGPL-2.1-or-later (portions under the MIT license)
+
+  Boost (any, graph, safe-numerics, serialization)
+    https://www.boost.org
+    Boost Software License 1.0
+
+  Eigen 3
+    https://eigen.tuxfamily.org
+    Mozilla Public License 2.0 (some modules under BSD-3-Clause)
+
+  Intel oneTBB
+    https://github.com/oneapi-src/oneTBB
+    Apache License 2.0
+
+LGPL components
+---------------
+pagmo2 and NLopt are used under the GNU Lesser General Public License. This
+distribution includes copies of their licenses, and — as required by
+LGPL-3.0 section 4 and LGPL-2.1 section 6 — permits you to modify those
+libraries and relink pagmonet4j against your modified versions. See the
+project's LGPL-compliance documentation for how to obtain the relinkable
+components.

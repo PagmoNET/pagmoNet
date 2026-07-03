@@ -68,8 +68,7 @@ try (MyProblem prob = new MyProblem();
 
 ## License
 
-Wrapper code: LGPL-2.1-or-later. See [LICENSE](LICENSE).
-IPOPT itself: EPL-2.0. See [NOTICE](NOTICE).
+This package is licensed under the **EPL-2.0**, matching IPOPT. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
 
 ## Related
 

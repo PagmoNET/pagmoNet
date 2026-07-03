@@ -45,4 +45,4 @@ After changing `.i` files, re-run SWIG to regenerate the language-specific wrapp
 
 ## License
 
-LGPL-2.1-or-later. See [LICENSE](LICENSE).
+MPL-2.0. See [LICENSE](LICENSE).
