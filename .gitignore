@@ -20,5 +20,6 @@ swig/generated/
 *.idb
 *.iobj
 *.ipdb
+*.tlog
 *.so
 *.dylib

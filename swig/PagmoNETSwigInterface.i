@@ -159,9 +159,9 @@ namespace pagmo {
     %include swigInterfaceFiles/algorithms/de1220.i
     %include swigInterfaceFiles/algorithms/gaco.i
     %include swigInterfaceFiles/algorithms/gwo.i
-    #if defined(PAGMO_WITH_IPOPT)
-        %include swigInterfaceFiles/algorithms/ipopt.i
-    #endif
+    // IPOPT ships in every build: the ipopt algorithm loads libipopt at runtime via dlopen
+    // (nothing IPOPT is linked), so the binding is unconditional -- see deferred_ipopt.hpp.
+    %include swigInterfaceFiles/algorithms/ipopt.i
     #if defined(PAGMO_WITH_NLOPT)
         %include swigInterfaceFiles/algorithms/nlopt.i
     #endif
