@@ -124,65 +124,100 @@ final class NativeLoader {
     }
 
     /**
-     * Extract every file under {@code resourceDir} (e.g. {@code natives/osx-arm64}) into
-     * {@code destDir}, returning the number of files extracted. Handles both the packaged
-     * case (running from a JAR — enumerate the zip) and the exploded case (running from a
-     * classes directory — copy the on-disk files), so dependency dylibs/DLLs travel with
-     * the wrapper. Falls back to extracting just the wrapper if the location can't be
-     * enumerated.
+     * Extract every file under {@code natives/<rid>/} from ALL classpath locations into
+     * {@code destDir}, returning the number of files extracted. This gathers the wrapper from
+     * the base pagmonet4j jar AND the IPOPT dependency closure (libipopt + MUMPS + OpenBLAS +
+     * GCC runtime) from the separate pagmonet4j-ipopt companion jar when present, so both land
+     * in the same temp dir. Handles packaged jars (enumerate the zip) and exploded classes
+     * dirs. With everything co-located, dyld ({@code @loader_path}), the Windows preload, and
+     * Linux ({@code $ORIGIN}) all resolve the closure from there. Falls back to extracting just
+     * the wrapper if the classpath can't be enumerated.
      */
     private static int extractClosure(String resourceDir, Path destDir) throws IOException {
-        URL location = null;
-        try {
-            location = NativeLoader.class.getProtectionDomain().getCodeSource().getLocation();
-        } catch (Exception ignored) {}
-
-        if (location != null && "file".equals(location.getProtocol())) {
-            File src;
-            try {
-                src = new File(location.toURI());
-            } catch (Exception e) {
-                src = new File(location.getPath());
-            }
-            if (src.isFile()) {
-                // Packaged JAR: enumerate entries under resourceDir/.
-                int count = 0;
-                try (ZipFile zip = new ZipFile(src)) {
-                    String prefix = resourceDir + "/";
-                    var entries = zip.entries();
-                    while (entries.hasMoreElements()) {
-                        ZipEntry e = entries.nextElement();
-                        if (e.isDirectory() || !e.getName().startsWith(prefix)) continue;
-                        String name = e.getName().substring(prefix.length());
-                        if (name.isEmpty() || name.contains("/")) continue; // flat dir only
-                        try (InputStream in = zip.getInputStream(e)) {
-                            Files.copy(in, destDir.resolve(name), StandardCopyOption.REPLACE_EXISTING);
-                        }
-                        count++;
-                    }
-                }
-                if (count > 0) return count;
-            } else if (src.isDirectory()) {
-                // Exploded classpath: copy the on-disk closure.
-                File dir = new File(src, resourceDir);
-                File[] files = dir.listFiles(File::isFile);
-                if (files != null && files.length > 0) {
-                    for (File f : files) {
-                        Files.copy(f.toPath(), destDir.resolve(f.getName()), StandardCopyOption.REPLACE_EXISTING);
-                    }
-                    return files.length;
-                }
-            }
+        int total = 0;
+        for (File root : classpathRoots()) {
+            total += extractFromRoot(root, resourceDir, destDir);
         }
+        if (total > 0) return total;
 
-        // Last resort: extract only the wrapper via the resource stream. This works when
-        // the closure can't be enumerated (unusual classloaders); a wrapper with no
-        // bundled deps — the static base/Linux case — loads fine this way.
+        // Last resort: extract only the wrapper via the resource stream. This works when the
+        // classpath can't be enumerated (unusual classloaders); a wrapper with no bundled
+        // deps — the static base/Linux case — loads fine this way.
         String single = "/" + resourceDir + "/" + nativeFileName();
         try (InputStream in = NativeLoader.class.getResourceAsStream(single)) {
             if (in == null) return 0;
             Files.copy(in, destDir.resolve(nativeFileName()), StandardCopyOption.REPLACE_EXISTING);
             return 1;
+        }
+    }
+
+    /** Extract the flat files under {@code resourceDir/} from a single classpath root (a jar
+     *  file or an exploded classes directory) into {@code destDir}. Returns the count. */
+    private static int extractFromRoot(File root, String resourceDir, Path destDir) throws IOException {
+        if (root == null || !root.exists()) return 0;
+        int count = 0;
+        if (root.isFile()) {
+            try (ZipFile zip = new ZipFile(root)) {
+                String prefix = resourceDir + "/";
+                var entries = zip.entries();
+                while (entries.hasMoreElements()) {
+                    ZipEntry e = entries.nextElement();
+                    if (e.isDirectory() || !e.getName().startsWith(prefix)) continue;
+                    String name = e.getName().substring(prefix.length());
+                    if (name.isEmpty() || name.contains("/")) continue; // flat dir only
+                    try (InputStream in = zip.getInputStream(e)) {
+                        Files.copy(in, destDir.resolve(name), StandardCopyOption.REPLACE_EXISTING);
+                    }
+                    count++;
+                }
+            } catch (IOException notAReadableZip) {
+                // A stray, non-zip classpath entry — skip it.
+            }
+        } else if (root.isDirectory()) {
+            File dir = new File(root, resourceDir);
+            File[] files = dir.listFiles(File::isFile);
+            if (files != null) {
+                for (File f : files) {
+                    Files.copy(f.toPath(), destDir.resolve(f.getName()), StandardCopyOption.REPLACE_EXISTING);
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+
+    /**
+     * All classpath roots (jars/dirs) to scan for {@code natives/<rid>/}: this class's own
+     * code source (the base jar), every {@code java.class.path} entry (which is where the
+     * pagmonet4j-ipopt companion jar shows up), and any {@code URLClassLoader} URLs. A set
+     * preserves order while de-duplicating.
+     */
+    private static java.util.List<File> classpathRoots() {
+        java.util.LinkedHashSet<File> roots = new java.util.LinkedHashSet<>();
+        try {
+            File f = toFile(NativeLoader.class.getProtectionDomain().getCodeSource().getLocation());
+            if (f != null) roots.add(f);
+        } catch (Exception ignored) {}
+        String cp = System.getProperty("java.class.path", "");
+        for (String entry : cp.split(File.pathSeparator)) {
+            if (entry != null && !entry.isBlank()) roots.add(new File(entry));
+        }
+        ClassLoader cl = NativeLoader.class.getClassLoader();
+        if (cl instanceof java.net.URLClassLoader ucl) {
+            for (URL u : ucl.getURLs()) {
+                File f = toFile(u);
+                if (f != null) roots.add(f);
+            }
+        }
+        return new java.util.ArrayList<>(roots);
+    }
+
+    private static File toFile(URL url) {
+        if (url == null || !"file".equals(url.getProtocol())) return null;
+        try {
+            return new File(url.toURI());
+        } catch (Exception e) {
+            return new File(url.getPath());
         }
     }
 
