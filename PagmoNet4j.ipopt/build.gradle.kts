@@ -11,7 +11,7 @@
 // PAGMONET_IPOPT_LIBRARY override) can depend on the base pagmonet4j artifact alone.
 
 plugins {
-    java
+    `java-library`
     `maven-publish`
 }
 

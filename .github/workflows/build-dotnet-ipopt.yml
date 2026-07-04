@@ -40,8 +40,8 @@ jobs:
         run: choco install swig --yes
         shell: pwsh
 
-      - name: Regenerate IPOPT-enabled C# bindings
-        run: pwsh pagmo.NET/createSwigWrappersAndPlaceThem.ps1 -WithIpopt
+      - name: Regenerate C# bindings (ipopt is unconditional; loaded at runtime)
+        run: pwsh pagmo.NET/createSwigWrappersAndPlaceThem.ps1
         shell: pwsh
 
       - name: Bootstrap vcpkg
@@ -72,10 +72,10 @@ jobs:
           echo "IPOPT_PREFIX=C:\ipopt-env\Library" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
         shell: pwsh
 
-      - name: Build native with IPOPT
+      - name: Build base native (no IPOPT link; libipopt is dlopen'd at test time)
         env:
           VCPKG_OVERLAY_PORTS: ${{ github.workspace }}/ports
-        run: pwsh scripts/build-native.ps1 -Configuration Release -WithIpopt
+        run: pwsh scripts/build-native.ps1 -Configuration Release
         shell: pwsh
 
       - name: Dump vcpkg build logs on failure
@@ -123,8 +123,8 @@ jobs:
           sudo apt-get install -y cmake build-essential swig curl zip unzip tar \
             autoconf autoconf-archive automake libtool libmumps-seq-dev
 
-      - name: Regenerate IPOPT-enabled C# bindings
-        run: pwsh pagmo.NET/createSwigWrappersAndPlaceThem.ps1 -WithIpopt
+      - name: Regenerate C# bindings (ipopt is unconditional; loaded at runtime)
+        run: pwsh pagmo.NET/createSwigWrappersAndPlaceThem.ps1
 
       - name: Install PowerShell
         run: |
@@ -149,10 +149,10 @@ jobs:
           key: vcpkg-linux-dotnet-ipopt-${{ hashFiles('ports/**', 'native/CMakeLists.txt') }}
           restore-keys: vcpkg-linux-dotnet-ipopt-
 
-      - name: Build native with IPOPT
+      - name: Build base native (no IPOPT link; libipopt is dlopen'd at test time)
         env:
           VCPKG_OVERLAY_PORTS: ${{ github.workspace }}/ports
-        run: pwsh scripts/build-native.ps1 -Configuration Release -WithIpopt
+        run: pwsh scripts/build-native.ps1 -Configuration Release
 
       - name: Dump IPOPT build logs on failure
         if: failure()
@@ -206,8 +206,8 @@ jobs:
               | sudo tee "$SDK/usr/lib/libm.tbd" > /dev/null 2>&1 || true
           fi
 
-      - name: Regenerate IPOPT-enabled C# bindings
-        run: pwsh pagmo.NET/createSwigWrappersAndPlaceThem.ps1 -WithIpopt
+      - name: Regenerate C# bindings (ipopt is unconditional; loaded at runtime)
+        run: pwsh pagmo.NET/createSwigWrappersAndPlaceThem.ps1
 
       - name: Bootstrap vcpkg
         run: |
@@ -224,10 +224,10 @@ jobs:
           key: vcpkg-macos-dotnet-ipopt-v3-${{ hashFiles('ports/**', 'native/CMakeLists.txt') }}
           restore-keys: vcpkg-macos-dotnet-ipopt-v3-
 
-      - name: Build native with IPOPT
+      - name: Build base native (no IPOPT link; libipopt is dlopen'd at test time)
         env:
           VCPKG_OVERLAY_PORTS: ${{ github.workspace }}/ports
-        run: pwsh scripts/build-native.ps1 -Configuration Release -WithIpopt
+        run: pwsh scripts/build-native.ps1 -Configuration Release
 
       - name: Dump IPOPT build logs on failure
         if: failure()
