@@ -39,8 +39,7 @@ pwsh scripts/build-native.ps1 -Configuration Release
 After changing `.i` files, re-run SWIG to regenerate the language-specific wrappers:
 
 ```powershell
-# From pagmo.NET or PagmoNet4j (references this repo as a submodule)
-.\createSwigWrappersAndPlaceThem.ps1
+pwsh pagmo.NET/createSwigWrappersAndPlaceThem.ps1
 ```
 
 ## License

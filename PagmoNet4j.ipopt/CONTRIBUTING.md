@@ -1,49 +1,53 @@
 # Contributing to PagmoNet4j.ipopt
 
+`pagmonet4j-ipopt` is a **pure native payload** in the `pagmoNet` monorepo: it has no Java,
+SWIG, or pagmo code of its own. The `ipopt` algorithm and its bindings live in the base
+`pagmonet4j` artifact (under `PagmoNet4j/`); this artifact only bundles `libipopt` and its
+dependency closure under `natives/<rid>/`, which the base's `NativeLoader` extracts and the base
+loads at runtime via `dlopen`. So most changes here are to packaging (the `build.gradle.kts`, the
+bundling script, the workflow), not code.
+
 ## Prerequisites
 
 - JDK 17+
 - Gradle (wrapper included)
-- vcpkg with `VCPKG_ROOT` set
-- PowerShell 7+ (`pwsh`)
+- PowerShell 7+ (`pwsh`) — for `scripts/bundle-native-deps.ps1`
+- To exercise a real IPOPT solve locally: a `libipopt` on the load path (e.g. a conda-forge
+  `ipopt` env), or set `PAGMONET_IPOPT_LIBRARY` to one
 
 ## Cloning
 
 ```powershell
-git clone --recurse-submodules https://github.com/samthegliderpilot/PagmoNet4j.ipopt
+git clone https://github.com/samthegliderpilot/pagmoNet
 ```
 
-## Building the native layer
+No submodules — the shared `native/` + `swig/` layer and all four sub-projects live in the one repo.
 
-IPOPT is compiled into the JNI library. The `ports/coin-or-ipopt/` overlay in this repo must be on the vcpkg overlay path alongside the PagmoNet4j ports.
+## Building and testing
+
+The companion itself ships no binary you build; to test it, build the shared base JNI wrapper once,
+then run the base tests with a `libipopt` available (a real solve is exercised by
+`IpoptSolveWhenAvailableTest`, which is skipped when no `libipopt` is loadable):
 
 ```powershell
-# Windows
 $env:VCPKG_ROOT = "C:\vcpkg"
-pwsh scripts/build-native.ps1 -Configuration Release
+pwsh PagmoNet4j/scripts/build-native.ps1 -Configuration Release   # base JNI wrapper (no IPOPT linked)
+$env:PATH = "C:\path\to\ipopt\bin;" + $env:PATH                   # a libipopt for the dlopen probe
+cd PagmoNet4j; ./gradlew :core:test
 ```
 
-```bash
-# Linux/macOS
-export VCPKG_ROOT=~/vcpkg
-pwsh scripts/build-native.ps1 -Configuration Release
-```
+Packaging (bundle the `libipopt` closure into `natives/<rid>/`, assemble the payload JAR) is driven
+by `.github/workflows/release-java-ipopt.yml` via `scripts/bundle-native-deps.ps1`; see that
+workflow for the exact per-platform steps.
 
-## Running tests
-
-```powershell
-$env:PAGMO4J_NATIVE_DIR = "PagmoNet4j/pagmoWrapper/win-build"
-./gradlew test
-```
-
-## Repo layout
+## Repo layout (this sub-project)
 
 | Path | Contents |
 |---|---|
-| `src/generated/java/` | SWIG-generated Java wrapper class |
-| `swig/ipopt.i` | SWIG interface file |
-| `ports/coin-or-ipopt/` | vcpkg overlay port for COIN-OR IPOPT |
-| `PagmoNet4j/` | Submodule — full PagmoNet4j repo (contains `pagmoNet/` nested submodule) |
+| `build.gradle.kts` | The payload JAR: `api`-depends on `pagmonet4j`, bundles the staged `natives/<rid>/*` closure |
+| `cleanroom/` | Throwaway consumer used by the release clean-room gate |
+
+The shared bundling script lives at the monorepo root: `scripts/bundle-native-deps.ps1`.
 
 ## License
 

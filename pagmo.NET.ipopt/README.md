@@ -1,14 +1,16 @@
 # Pagmo.NET.Ipopt
 
-[Pagmo.NET](https://github.com/samthegliderpilot/pagmo.NET) with the IPOPT (Interior Point OPTimizer) nonlinear solver bundled — a self-sufficient **superset** of Pagmo.NET. Reference this package **or** Pagmo.NET, never both (a build-time guard enforces this).
+The IPOPT (Interior Point OPTimizer) native runtime for [Pagmo.NET](https://github.com/samthegliderpilot/pagmo.NET). This is a **pure native payload**: it bundles the `libipopt` shared library and its dependency closure (MUMPS, OpenBLAS, the GCC runtime) and nothing else. The base `Pagmo.NET` package already contains the `ipopt` algorithm, which loads this library at runtime via `dlopen`; this package simply supplies it so the algorithm works out of the box.
+
+Add it **alongside** `Pagmo.NET` (this package depends on the base — you get both). If you would rather bring your own IPOPT (a system install, or the `PAGMONET_IPOPT_LIBRARY` override), use the base `Pagmo.NET` package on its own.
 
 IPOPT is a gradient-based interior-point solver for large-scale nonlinear constrained optimization. It requires the problem to supply gradients (`has_gradient() = true`).
 
 ## Requirements
 
 - .NET 10.0+
-- No dependency on the base `Pagmo.NET` package — this package bundles the full Pagmo.NET API plus IPOPT. Reference this **or** `Pagmo.NET`, never both.
-- No separate IPOPT installation required — native binaries are bundled in the package
+- The base **`Pagmo.NET`** package (a dependency of this one — restored automatically)
+- No separate IPOPT installation required — the native binaries are bundled here
 
 ## Installation
 
@@ -65,9 +67,9 @@ It bundles pre-built native binaries from the following third-party projects, ea
 
 | Component | License | Linking |
 |-----------|---------|---------|
-| IPOPT | [EPL-2.0](https://opensource.org/licenses/EPL-2.0) | Static on Linux; dynamic (bundled DLL/dylib) on Windows/macOS |
-| MUMPS | [CeCILL-C](https://cecill.info/licences/Licence_CeCILL-C_V1-en.html) | Dynamic (bundled), part of conda-forge IPOPT on Windows/macOS |
-| OpenBLAS | [BSD-3-Clause](https://opensource.org/licenses/BSD-3-Clause) | Dynamic (bundled), part of conda-forge IPOPT on Windows/macOS |
+| IPOPT | [EPL-2.0](https://opensource.org/licenses/EPL-2.0) | Dynamic (bundled), loaded at runtime via `dlopen` — never linked into the base |
+| MUMPS | [CeCILL-C](https://cecill.info/licences/Licence_CeCILL-C_V1-en.html) | Dynamic (bundled), part of the IPOPT dependency closure |
+| OpenBLAS | [BSD-3-Clause](https://opensource.org/licenses/BSD-3-Clause) | Dynamic (bundled), part of the IPOPT dependency closure |
 | pagmo2 | [LGPL-3.0-or-later / GPL-3.0-or-later](https://www.gnu.org/licenses/lgpl-3.0) | Static (via base Pagmo.NET) |
 | Boost.Serialization | [BSL-1.0](https://www.boost.org/users/license.html) | Static (via base Pagmo.NET) |
 | NLopt | [LGPL-2.1-or-later](https://www.gnu.org/licenses/lgpl-2.1) | Static (via base Pagmo.NET) |

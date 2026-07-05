@@ -6,11 +6,12 @@
 
 ## Repository Structure
 
-This submodule (`pagmoNet`) is shared by two consumer repos:
+`pagmoNet` is a single monorepo. The shared `swig/` + `native/` layer at the root feeds two
+binding families (plus their IPOPT companions):
 - **pagmo.NET** — C# bindings (entry point: `swig/PagmoNETSwigInterface.i`)
 - **PagmoNet4j** — Java/Kotlin bindings (entry point: `swig/Pagmo4jSwigInterface.i`)
 
-### pagmoNet (this submodule)
+### Shared root layer
 - `swig/` — All SWIG interface files and shared C++ bridge code
   - `shared_core.i` — Core typemaps/types shared by both languages
   - `Pagmo4jSwigInterface.i` — Java binding entry point
@@ -33,7 +34,6 @@ This submodule (`pagmoNet`) is shared by two consumer repos:
 - `pagmoWrapper/` — JNI native library build
   - `CMakeLists.txt` — Builds `pagmonet4j.dll`/`libpagmonet4j.so`; SWIG regenerates wrap on CI
   - `generated/` — Committed wrap file (stale fallback; CMake regenerates from `.i` sources at build time)
-  - `ipopt_stubs/` — Stub headers for building without IPOPT
 - `scripts/` — `build-native.ps1`, `regen-swig.ps1`
 
 ## Working Model

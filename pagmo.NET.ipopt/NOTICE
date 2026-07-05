@@ -1,15 +1,41 @@
-THIRD-PARTY NOTICES
-===================
+THIRD-PARTY NOTICES — Pagmo.NET.Ipopt
+=====================================
 
-This package bundles IPOPT (Interior Point OPTimizer), developed by COIN-OR.
+Pagmo.NET.Ipopt is a pure native payload licensed under the Eclipse Public License
+2.0 (EPL-2.0; see LICENSE). It contains NO wrapper, pagmo, or managed code of its
+own — only the IPOPT runtime library and its dependency closure. It bundles pre-built
+native binaries from the following third-party projects, each under its own license.
 
-  Name:    IPOPT
-  Author:  Andreas Wächter, Carl Laird, and contributors
-  Source:  https://github.com/coin-or/Ipopt
-  License: Eclipse Public License 2.0 (EPL-2.0)
-           https://opensource.org/licenses/EPL-2.0
+The exact set of bundled binaries varies per platform (they are staged from the
+conda-forge `ipopt` package's runtime closure); the components are:
 
-The wrapper code in this repository (SWIG interface files, generated C# and
-Java stubs, and CMake build scripts) is original work licensed under
-LGPL-2.1-or-later (see LICENSE). The IPOPT library itself is not modified
-and retains its EPL-2.0 license.
+  IPOPT (Interior Point OPTimizer)
+    Author:  Andreas Wächter, Carl Laird, and contributors (COIN-OR)
+    Source:  https://github.com/coin-or/Ipopt
+    License: Eclipse Public License 2.0 (EPL-2.0)
+             https://opensource.org/licenses/EPL-2.0
+    The IPOPT library is not modified and retains its EPL-2.0 license. It is loaded
+    at runtime via dlopen by the base Pagmo.NET package; it is never linked into that
+    (MPL-2.0) base.
+
+  MUMPS (MUltifrontal Massively Parallel Sparse direct Solver)
+    Source:  https://mumps-solver.org/
+    License: CeCILL-C
+             https://cecill.info/licences/Licence_CeCILL-C_V1-en.html
+
+  OpenBLAS
+    Source:  https://www.openblas.net/
+    License: BSD-3-Clause
+             https://opensource.org/licenses/BSD-3-Clause
+
+  GCC runtime (libgfortran, libquadmath, libgcc, libwinpthread, ...)
+    Source:  https://gcc.gnu.org/
+    License: GPL-3.0-or-later WITH GCC-exception-3.1 (GCC Runtime Library Exception)
+             https://www.gnu.org/licenses/gcc-exception-3.1.html
+
+  OpenMP runtime (LLVM libomp and/or Intel libiomp5), where present
+    License: Apache-2.0 WITH LLVM-exception (LLVM) / Intel Simplified Software License
+
+Source for all bundled components is available from their upstream repositories above.
+The base Pagmo.NET package (a dependency of this one) carries its own NOTICE covering
+pagmo2, NLopt, Boost, and TBB.

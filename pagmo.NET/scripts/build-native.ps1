@@ -41,8 +41,8 @@ try {
         # Uses the x64-linux-static-pic triplet to build pagmo2 and its dependencies
         # (Boost.Serialization, TBB, NLopt) as static PIC libraries, so
         # libPagmoWrapper.so has no external runtime dependencies beyond the standard
-        # C++ runtime. IPOPT is intentionally excluded from the base package; it ships
-        # in the separate Pagmo.NET.Ipopt package (self-contained superset).
+        # C++ runtime. IPOPT is never linked into the base; the base's ipopt algorithm
+        # loads libipopt at runtime via dlopen, supplied by the Pagmo.NET.Ipopt companion.
 
         if (-not $env:VCPKG_ROOT) {
             throw "VCPKG_ROOT must be set for Linux builds. Clone vcpkg (https://github.com/microsoft/vcpkg) and set VCPKG_ROOT."
@@ -140,8 +140,8 @@ try {
         # Windows cmake + vcpkg path (preferred for release builds).
         # Uses the x64-windows-static-md triplet to statically link pagmo2, Boost, TBB,
         # and NLopt into PagmoWrapper.dll — consumers need no additional DLLs.
-        # IPOPT is intentionally excluded from the base package; it ships in the
-        # separate Pagmo.NET.Ipopt package (self-contained superset).
+        # IPOPT is never linked into the base; the base's ipopt algorithm loads libipopt
+        # at runtime via dlopen, supplied by the Pagmo.NET.Ipopt companion.
         $vcpkgExe       = Join-Path $env:VCPKG_ROOT "vcpkg.exe"
         $vcpkgToolchain = Join-Path $env:VCPKG_ROOT "scripts/buildsystems/vcpkg.cmake"
         $triplet        = "x64-windows-static-md"

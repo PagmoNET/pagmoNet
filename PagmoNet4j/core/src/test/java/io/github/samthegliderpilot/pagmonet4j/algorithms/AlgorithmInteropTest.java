@@ -67,10 +67,11 @@ class AlgorithmInteropTest {
         try (nlopt a = new nlopt("lbfgs")) { assertNormalized(a); }
     }
 
-    // NOTE: ipopt has no test here — the base library is IPOPT-free by design (no
-    // -DPAGMO_WITH_IPOPT_JNI), so the ipopt class is not generated. IPOPT coverage
-    // lives in the PagmoNet4j.ipopt superset. isIpoptAvailable() still returns false
-    // here (see OptionalSolverAvailabilityTest.ipoptIsAbsentInBaseLibrary).
+    // NOTE: ipopt has no interop test here. The base links no IPOPT, but the `ipopt`
+    // algorithm class IS present (it loads libipopt at runtime via dlopen). A real solve
+    // is exercised by IpoptSolveWhenAvailableTest when a libipopt is loadable; on a clean
+    // libipopt-free base, isIpoptAvailable() returns false (see
+    // OptionalSolverAvailabilityTest.ipoptIsAbsentInBaseLibrary).
 
     @Test
     void customManagedAlgorithmUsesDirectorPath() {

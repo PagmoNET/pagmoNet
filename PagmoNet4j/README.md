@@ -136,5 +136,5 @@ pagmo2 and NLopt are statically linked under the LGPL; you may modify them and r
 ## Related
 
 - [pagmo.NET](https://github.com/samthegliderpilot/pagmo.NET) — C# / .NET bindings
-- [pagmoNet](https://github.com/samthegliderpilot/pagmoNet) — shared SWIG + native bridge (submodule)
-- [pagmoNet.ipopt](https://github.com/samthegliderpilot/pagmoNet.ipopt) — optional IPOPT gradient-based solver add-on
+- [pagmoNet](https://github.com/samthegliderpilot/pagmoNet) — shared SWIG + native bridge (monorepo root)
+- [PagmoNet4j.ipopt](https://github.com/samthegliderpilot/PagmoNet4j.ipopt) — IPOPT native runtime companion (bundles libipopt)

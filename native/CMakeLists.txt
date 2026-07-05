@@ -148,11 +148,10 @@ if(APPLE)
     # One generic sweep is deliberately used instead of per-target strips: the latter
     # silently miss a target the moment a new one is linked (exactly how NLopt::nlopt
     # slipped through and broke the base macOS build). This mirrors the PagmoNet4j
-    # `.ipopt` superset's pagmoWrapper/CMakeLists.txt technique so both native builds
-    # stay in parity.
+    # pagmoWrapper/CMakeLists.txt technique so both native builds stay in parity.
     #
     # Gated on APPLE because on Linux "-lm"/"m" is a real, required separate library;
-    # stripping it there would break the IPOPT link. Placed after the optional-solver
+    # stripping it there would break the link. Placed after the optional-solver
     # blocks so NLopt::nlopt / Ipopt::Ipopt are already imported -- the mutated property
     # is read at generate time, after the target_link_libraries calls above.
     get_property(_imported_tgts DIRECTORY PROPERTY IMPORTED_TARGETS)

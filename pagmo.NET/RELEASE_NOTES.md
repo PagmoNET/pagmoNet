@@ -8,7 +8,7 @@ First stable release.
 
 - **Release pipeline regenerates SWIG bindings**, so the published package is assembled the same way as the tested one (ship == test). A shared SWIG step is used by both the build and release workflows to prevent drift.
 - **Single-source version** via `Directory.Build.props` — one `<Version>` for the whole package instead of per-csproj tags.
-- Base `Pagmo.NET` remains intentionally IPOPT-free (NLopt is included). For IPOPT, use the `Pagmo.NET.Ipopt` superset package.
+- Base `Pagmo.NET` includes the `ipopt` algorithm but links **no** IPOPT (it loads `libipopt` at runtime via `dlopen`), so the base stays MPL-2.0 and EPL-free. Add the `Pagmo.NET.Ipopt` companion package to supply a bundled `libipopt`, or bring your own via `PAGMONET_IPOPT_LIBRARY`. (NLopt is statically included.)
 
 ### Breaking / Behavior Notes
 

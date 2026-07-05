@@ -6,14 +6,15 @@ First stable release.
 
 ### Highlights
 
-- **Self-sufficient superset.** `Pagmo.NET.Ipopt` no longer depends on the base `Pagmo.NET` package. It compiles the base sources directly and ships its own IPOPT-enabled native library, so it is a drop-in superset — reference this package **or** `Pagmo.NET`, never both (a build-time guard enforces this).
-- **Bundled native dependencies on every platform.** The Windows x64, Linux x64, and macOS (arm64 + x86_64) packages carry the full IPOPT dependency closure in `runtimes/`, so the package works on a clean machine with no conda, MSYS2, or environment setup.
-- **Clean-room verification.** CI installs the published-shaped package on a machine with no dev tools and runs an IPOPT solve, gating publish on the artifact actually working for a first-time user.
+- **Pure native payload.** `Pagmo.NET.Ipopt` ships only `libipopt` and its dependency closure and takes a hard dependency on the base `Pagmo.NET` package. The base carries the `ipopt` algorithm, which loads `libipopt` at runtime via `dlopen` (no IPOPT is ever linked into the base). Add this package **alongside** `Pagmo.NET` — you get both.
+- **Bring-your-own IPOPT.** Prefer a system install or the `PAGMONET_IPOPT_LIBRARY` override? Use the base `Pagmo.NET` package on its own; the `ipopt` algorithm is there and will find your library.
+- **Bundled native dependencies on every platform.** The Windows x64, Linux x64, and macOS (arm64 + x86_64) payloads carry the full IPOPT dependency closure (IPOPT, MUMPS, OpenBLAS, GCC runtime) under `runtimes/<rid>/native/`, so it works on a clean machine with no conda or environment setup.
+- **Clean-room verification.** CI installs the published-shaped base + companion on a machine with no dev tools and runs an IPOPT solve, gating publish on the artifacts actually working for a first-time user.
 - **Single-source version** via `Directory.Build.props`.
 
 ### Breaking / Behavior Notes
 
-- The previous "pure C# add-on that pulls in `Pagmo.NET` as a dependency" model is removed. Consumers on that model should switch to referencing `Pagmo.NET.Ipopt` alone.
+- The interim "self-sufficient superset" pre-release model (compile the base sources directly, link IPOPT, reference this package alone) is removed for licensing reasons: the base stays MPL-2.0 and never links EPL IPOPT. Depend on **both** `Pagmo.NET` and `Pagmo.NET.Ipopt`.
 
 ## v1.0.0-beta.6
 

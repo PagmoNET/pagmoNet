@@ -1,14 +1,16 @@
 # PagmoNet4j.ipopt
 
-[PagmoNet4j](https://github.com/samthegliderpilot/PagmoNet4j) with the IPOPT (Interior Point OPTimizer) nonlinear solver bundled — a self-sufficient **superset** of PagmoNet4j. Depend on this artifact **or** `pagmonet4j`, never both (Gradle enforces this via a capability conflict).
+The IPOPT (Interior Point OPTimizer) native runtime for [PagmoNet4j](https://github.com/samthegliderpilot/PagmoNet4j). This is a **pure native payload**: it bundles the `libipopt` shared library and its dependency closure (MUMPS, OpenBLAS, the GCC runtime) and nothing else. The base `pagmonet4j` artifact already contains the `ipopt` algorithm, which loads this library at runtime via `dlopen`; this artifact simply supplies it so the algorithm works out of the box.
+
+Add it **alongside** `pagmonet4j` (this artifact depends on the base — you get both). If you would rather bring your own IPOPT (a system install, or the `PAGMONET_IPOPT_LIBRARY` override), use the base `pagmonet4j` artifact on its own.
 
 IPOPT is a gradient-based interior-point solver for large-scale nonlinear constrained optimization. It requires the problem to supply gradients (`has_gradient()` returns `true`).
 
 ## Requirements
 
 - JDK 17+
-- No dependency on the base `pagmonet4j` artifact — `pagmonet4j-ipopt` provides the full PagmoNet4j API plus IPOPT and declares the `pagmonet4j` capability, so depend on this **or** `pagmonet4j`, never both.
-- No separate IPOPT installation required — the solver is statically linked into the native library
+- The base **`pagmonet4j`** artifact (a dependency of this one — resolved automatically)
+- No separate IPOPT installation required — the native binaries are bundled here and extracted at load time
 
 ## Installation
 

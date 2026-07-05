@@ -8,10 +8,10 @@
     this <Version> instead of hardcoding their own. PackageVersion defaults to
     Version when unset.
 
-    The base sources compiled into this superset live under pagmo.NET/, which has
-    its OWN Directory.Build.props — but version is resolved per PROJECT FILE, and
-    this project file lives here, so the superset uses this value (the two repos'
-    versions stay independently settable).
+    The base package (a dependency of this pure payload) lives under pagmo.NET/, which
+    has its OWN Directory.Build.props — but version is resolved per PROJECT FILE, and
+    this project file lives here, so the companion uses this value (base and companion
+    versions stay independently settable, though they ship in lockstep).
 
     CI overrides this at pack time via `-p:Version=<x>` on the command line
     (command-line properties win over this file), mirroring how the Java side

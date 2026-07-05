@@ -11,11 +11,14 @@ SWIG interface files, shared C++ native bridge, and vcpkg ports for the [PagmoNe
 | `ports/pagmo2/` | Custom vcpkg port for pagmo2 |
 | `.ai/` | AI context documents for the PagmoNet project |
 
-## Used by
+## Sub-projects
 
-- [PagmoNet/pagmo.NET](https://github.com/PagmoNet/pagmo.NET) — C# / .NET bindings
-- [PagmoNet/PagmoNet4j](https://github.com/PagmoNet/PagmoNet4j) — Java / Kotlin bindings
-- [PagmoNet/ipopt](https://github.com/PagmoNet/ipopt) — IPOPT add-on
+This is a monorepo. The shared `native/` + `swig/` layer feeds four sub-projects:
+
+- [`pagmo.NET/`](pagmo.NET/) — C# / .NET base bindings (MPL-2.0)
+- [`pagmo.NET.ipopt/`](pagmo.NET.ipopt/) — C# IPOPT native runtime companion (EPL-2.0)
+- [`PagmoNet4j/`](PagmoNet4j/) — Java / Kotlin base bindings (MPL-2.0)
+- [`PagmoNet4j.ipopt/`](PagmoNet4j.ipopt/) — Java IPOPT native runtime companion (EPL-2.0)
 
 ## License
 

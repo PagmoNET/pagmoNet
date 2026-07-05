@@ -1,4 +1,8 @@
-# Contributing to pagmo.NET
+# Contributing to Pagmo.NET
+
+This file covers the `pagmo.NET/` sub-project of the `pagmoNet` monorepo. The shared SWIG
+interface and native C++ bridge live once at the monorepo **root** (`native/` + `swig/`); the
+commands below are run from that root.
 
 ## Prerequisites
 
@@ -12,73 +16,69 @@
 
 ## Cloning
 
-The native bridge lives in the `pagmoNet` submodule. Always clone recursively:
-
 ```powershell
-git clone --recurse-submodules https://github.com/samthegliderpilot/pagmo.NET
+git clone https://github.com/samthegliderpilot/pagmoNet
 ```
 
-If you already cloned without submodules:
-
-```powershell
-git submodule update --init --recursive
-```
+No submodules — `native/`, `swig/`, and all four sub-projects are in the one repo.
 
 ## Building the native layer
 
+From the monorepo root:
+
 ```powershell
-# Debug (fast, no IPOPT)
-.\scripts\build-native.ps1
+# Debug (fast)
+pwsh scripts/build-native.ps1
 
 # Release with all optimizers
-.\scripts\build-native.ps1 -Configuration Release
+pwsh scripts/build-native.ps1 -Configuration Release
 ```
 
-The script detects whether `pagmoNet\native\CMakeLists.txt` exists (submodule present) and uses it; otherwise falls back to the legacy `pagmoWrapper\` directory. The DLL lands in `pagmoNet\native\win-build\PagmoWrapper.dll` (or `pagmoWrapper\win-build\` on the legacy path).
+This builds the root `native/` CMake project; the DLL lands in `native/win-build/PagmoWrapper.dll`.
+IPOPT is never linked in — the base's `ipopt` algorithm loads `libipopt` at runtime via `dlopen`
+(supply it with the `Pagmo.NET.Ipopt` companion, or `PAGMONET_IPOPT_LIBRARY`).
 
 ## Running tests
 
 ```powershell
-$env:PATH = "$(Resolve-Path pagmoNet\native\win-build);$env:PATH"
-dotnet test Tests/Tests.Pagmo.NET/Tests.Pagmo.NET.csproj -p:Platform=x64 --logger "console;verbosity=normal"
+$env:PATH = "$(Resolve-Path native\win-build);$env:PATH"
+dotnet test pagmo.NET/Tests/Tests.Pagmo.NET/Tests.Pagmo.NET.csproj -p:Platform=x64 --logger "console;verbosity=normal"
 ```
-
-Expected: 103 tests green.
 
 ## Running examples
 
 ```powershell
-dotnet run --project Examples/Examples.Pagmo.NET -- all
+dotnet run --project pagmo.NET/Examples/Examples.Pagmo.NET -- all
 ```
 
 ## Regenerating SWIG wrappers
 
-Only needed after editing `.i` interface files in `pagmoNet/swig/`:
+Only needed after editing `.i` interface files in the root `swig/`:
 
 ```powershell
-.\createSwigWrappersAndPlaceThem.ps1
+pwsh pagmo.NET/createSwigWrappersAndPlaceThem.ps1
 ```
 
-SWIG is resolved via `SWIG_EXE` env var, `SWIG_HOME`, or `PATH`. Pre-generated wrappers are checked in — most contributions do not require regeneration.
+SWIG is resolved via `SWIG_EXE`, `SWIG_HOME`, or `PATH`. Pre-generated wrappers are checked in —
+most contributions do not require regeneration.
 
-## Repo layout
+## Repo layout (monorepo)
 
 ```
-pagmo.NET/
-  Pagmo.NET/          C# library (pagmoExtensions/, generated wrappers)
-  Tests/              xUnit test suite
-  Examples/           Runnable examples (single, archipelago, cloning, etc.)
-  docs/               Markdown documentation
-  scripts/            build-native.ps1, build-release-artifacts.ps1, etc.
-  pagmoNet/           Submodule: shared SWIG interface + native C++ bridge
-  pagmoWrapper/       Legacy MSBuild project (pre-submodule fallback)
-  ports/              vcpkg overlay ports (coin-or-ipopt fix)
-  triplets/           vcpkg custom triplets
+pagmoNet/
+  native/             Shared native C++ bridge (CMake) — builds PagmoWrapper / libpagmonet4j
+  swig/               Shared SWIG interface (.i files) for C# and Java
+  scripts/            Shared build-native.ps1, bundle-native-deps.ps1, ...
+  ports/ triplets/    vcpkg overlay ports (coin-or-ipopt, ...) + custom triplets
+  pagmo.NET/          C# base library (this sub-project): Pagmo.NET/, Tests/, Examples/, docs/
+  pagmo.NET.ipopt/    C# IPOPT companion payload
+  PagmoNet4j/         Java/Kotlin base library
+  PagmoNet4j.ipopt/   Java IPOPT companion payload
 ```
 
 ## Pull requests
 
 - Keep PRs focused — one concern per PR
 - Run `dotnet test` before opening
-- If you change the SWIG interface, regenerate wrappers and include them in the PR
-- The `pagmoNet` submodule is a separate repo; changes to the native bridge go there first
+- If you change the SWIG interface (root `swig/`), regenerate wrappers and include them in the PR —
+  it affects both the C# and Java bindings

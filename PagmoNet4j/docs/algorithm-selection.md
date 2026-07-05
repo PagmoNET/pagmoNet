@@ -64,7 +64,7 @@ Problems where some decision variables are integers (`get_nix() > 0`).
 | pagmo2 name | PagmoNet4j class | Notes |
 |-------------|------------------|-------|
 | NLopt | `nlopt` | LBFGS, MMA, SLSQP, and many others; pass the NLopt solver name to the constructor |
-| IPOPT | via `pagmonet4j-ipopt` add-on | Interior-point; for large-scale constrained problems; requires the separate `pagmonet4j-ipopt` artifact |
+| IPOPT | `ipopt` (needs libipopt) | Interior-point; for large-scale constrained problems. The `ipopt` algorithm is built in; add the `pagmonet4j-ipopt` companion artifact (or `PAGMONET_IPOPT_LIBRARY`) to supply libipopt |
 
 ## Meta-algorithms (wrap another algorithm)
 
