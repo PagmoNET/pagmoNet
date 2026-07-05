@@ -17,12 +17,22 @@ on:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
-# PagmoNet4j.ipopt ships a SELF-CONTAINED superset fat JAR. One IPOPT-enabled SWIG run
-# regenerates the whole binding surface into PagmoNet4j.ipopt/src/generated/java; each
-# platform job builds the IPOPT-enabled wrapper and bundles its full dynamic dependency
-# closure. The pack job assembles all RIDs into one JAR, and the clean-room gate proves
-# that JAR works on a machine with no dev tools, no conda, and no PAGMO4J_NATIVE_DIR
-# before anything is published.
+# PagmoNet4j.ipopt is a PURE, EPL-2.0 NATIVE PAYLOAD (the Java twin of Pagmo.NET.Ipopt): it ships
+# libipopt and its dependency closure (MUMPS/OpenBLAS/gfortran runtime) under natives/<rid>, and
+# NOTHING else. No pagmo, no Java, no JNI wrapper -- the base pagmonet4j artifact carries the
+# `ipopt` algorithm, which loads this libipopt at runtime via dlopen; its NativeLoader extracts
+# this payload's natives/<rid> closure from the classpath. So this release builds NO native
+# wrapper and needs NO vcpkg/SWIG/IPOPT toolchain: each platform job just assembles conda-forge's
+# libipopt closure (bundle-native-deps.ps1), the pack job bundles them into one JAR, and the
+# clean-room gate proves base + companion together solve HS71 on a machine with no dev tools and
+# no conda.
+#
+# SELF-CONTAINED / OFFLINE GATE: the clean-room proves base + companion together, so it needs a
+# real base artifact. Rather than require the base to be published first, this workflow builds the
+# base in the same run via the shared _build-base-java.yml reusable workflow and stages it into the
+# same local maven repo as the companion. The clean-room resolves BOTH from that local repo (no
+# GitHub Packages), so a dry-run publishes nothing yet still proves the whole stack end-to-end.
+# (nomkl forces OpenBLAS instead of MKL for a small closure.)
 
 jobs:
 
@@ -41,50 +51,18 @@ jobs:
           if [ -z "$v" ]; then echo "Could not resolve a version" >&2; exit 1; fi
           echo "VERSION=$v" >> "$GITHUB_OUTPUT"
 
-  # ── Windows native: build IPOPT wrapper + bundle conda DLL closure ────────
+  # ── Build the base JAR in-run (shared) so the clean-room can be fully offline ──
+  base:
+    needs: meta
+    uses: ./.github/workflows/_build-base-java.yml
+    with:
+      version: ${{ needs.meta.outputs.version }}
+
+  # ── Windows payload: bundle conda libipopt DLL closure ────────────────────
   native-windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-
-      - name: Install SWIG
-        run: choco install swig --yes
-        shell: pwsh
-
-      - name: Regenerate IPOPT-enabled Java bindings (superset)
-        run: |
-          New-Item -ItemType Directory -Force -Path "PagmoNet4j.ipopt/src/generated/java/io/github/samthegliderpilot/pagmonet4j" | Out-Null
-          New-Item -ItemType Directory -Force -Path "PagmoNet4j/pagmoWrapper/generated" | Out-Null
-          swig -java -c++ `
-            -package "io.github.samthegliderpilot.pagmonet4j" `
-            -outdir "PagmoNet4j.ipopt/src/generated/java/io/github/samthegliderpilot/pagmonet4j" `
-            -o "PagmoNet4j/pagmoWrapper/generated/pagmonet4j_wrap.cxx" `
-            -DPAGMO_WITH_IPOPT_JNI `
-            -Iswig `
-            -Inative `
-            swig/Pagmo4jSwigInterface.i
-        shell: pwsh
-
-      - name: Bootstrap vcpkg
-        run: |
-          git clone https://github.com/microsoft/vcpkg C:/vcpkg --depth 1
-          C:/vcpkg/bootstrap-vcpkg.bat -disableMetrics
-          echo "VCPKG_ROOT=C:/vcpkg" >> $env:GITHUB_ENV
-        shell: pwsh
-
-      - name: Cache vcpkg
-        uses: actions/cache@v4
-        with:
-          path: |
-            C:/vcpkg/installed
-            ~/AppData/Local/vcpkg/archives
-          key: vcpkg-windows-java-ipopt-v2-${{ hashFiles('ports/**', 'PagmoNet4j/pagmoWrapper/CMakeLists.txt') }}
-          restore-keys: vcpkg-windows-java-ipopt-v2-
 
       - uses: mamba-org/setup-micromamba@v2
         with:
@@ -92,98 +70,61 @@ jobs:
           init-shell: 'none'
           generate-run-shell: 'false'
 
-      - name: Install IPOPT (Windows via conda-forge)
-        run: |
-          micromamba create -c conda-forge -p C:\ipopt-env ipopt -y
-          echo "IPOPT_PREFIX=C:\ipopt-env\Library" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Install IPOPT runtime (Windows via conda-forge, OpenBLAS)
+        run: micromamba create -c conda-forge -p C:\ipopt-env ipopt nomkl -y
         shell: pwsh
 
-      - name: Build native with IPOPT
-        env:
-          PAGMONET4J_ROOT: ${{ github.workspace }}/PagmoNet4j
-          PAGMONET4J_FEATURES: nlopt,ipopt
-          VCPKG_OVERLAY_PORTS: ${{ github.workspace }}/ports
-        run: pwsh PagmoNet4j.ipopt/scripts/build-native.ps1 -Configuration Release
-        shell: pwsh
-
-      - name: Bundle native + dependency closure
+      - name: Bundle libipopt + dependency closure
         run: |
-          pwsh PagmoNet4j.ipopt/scripts/bundle-native-deps.ps1 `
-            -WrapperPath PagmoNet4j/pagmoWrapper/win-build/pagmonet4j.dll `
+          pwsh scripts/bundle-native-deps.ps1 `
             -OutputDir staged/win-x64 `
             -SearchDir C:\ipopt-env\Library\bin
         shell: pwsh
 
-      - name: Upload native-win-x64
+      - name: Upload ipopt-payload-win-x64
         uses: actions/upload-artifact@v4
         with:
-          name: native-win-x64
+          name: ipopt-payload-win-x64
           path: staged/
 
-  # ── Linux native: fully static, self-contained .so ───────────────────────
+  # ── Linux payload: bundle conda libipopt .so closure (RPATH=$ORIGIN) ──────
   native-linux:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-
-      - name: Install build tools
+      - name: Install PowerShell + patchelf
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake build-essential swig curl zip unzip tar \
-            autoconf autoconf-archive automake libtool libmumps-seq-dev powershell
+          sudo apt-get install -y patchelf
+          source /etc/os-release
+          wget -q "https://packages.microsoft.com/config/ubuntu/${VERSION_ID}/packages-microsoft-prod.deb" -O ms-prod.deb
+          sudo dpkg -i ms-prod.deb
+          sudo apt-get update
+          sudo apt-get install -y powershell
 
-      - name: Regenerate IPOPT-enabled Java bindings (superset)
-        run: |
-          mkdir -p PagmoNet4j.ipopt/src/generated/java/io/github/samthegliderpilot/pagmonet4j
-          mkdir -p PagmoNet4j/pagmoWrapper/generated
-          swig -java -c++ \
-            -package "io.github.samthegliderpilot.pagmonet4j" \
-            -outdir PagmoNet4j.ipopt/src/generated/java/io/github/samthegliderpilot/pagmonet4j \
-            -o PagmoNet4j/pagmoWrapper/generated/pagmonet4j_wrap.cxx \
-            -DPAGMO_WITH_IPOPT_JNI \
-            -Iswig \
-            -Inative \
-            swig/Pagmo4jSwigInterface.i
-
-      - name: Bootstrap vcpkg
-        run: |
-          git clone https://github.com/microsoft/vcpkg ~/vcpkg --depth 1
-          ~/vcpkg/bootstrap-vcpkg.sh -disableMetrics
-          echo "VCPKG_ROOT=$HOME/vcpkg" >> $GITHUB_ENV
-
-      - name: Cache vcpkg
-        uses: actions/cache@v4
+      - uses: mamba-org/setup-micromamba@v2
         with:
-          path: |
-            ~/vcpkg/installed
-            ~/.cache/vcpkg/archives
-          key: vcpkg-linux-java-ipopt-${{ hashFiles('ports/**', 'PagmoNet4j/pagmoWrapper/CMakeLists.txt') }}
-          restore-keys: vcpkg-linux-java-ipopt-
+          micromamba-version: 'latest'
+          init-shell: 'none'
+          generate-run-shell: 'false'
 
-      - name: Build native with IPOPT
-        env:
-          PAGMONET4J_ROOT: ${{ github.workspace }}/PagmoNet4j
-          PAGMONET4J_FEATURES: nlopt,ipopt
-        run: pwsh PagmoNet4j.ipopt/scripts/build-native.ps1 -Configuration Release
+      - name: Install IPOPT runtime (Linux via conda-forge, OpenBLAS)
+        run: micromamba create -c conda-forge -p $HOME/ipopt-env ipopt nomkl -y
 
-      - name: Bundle native (static — copy through)
+      - name: Bundle libipopt + dependency closure
         run: |
-          pwsh PagmoNet4j.ipopt/scripts/bundle-native-deps.ps1 \
-            -WrapperPath "$PWD/PagmoNet4j/pagmoWrapper/build/libpagmonet4j.so" \
-            -OutputDir "$PWD/staged/linux-x64"
+          pwsh scripts/bundle-native-deps.ps1 \
+            -OutputDir "$PWD/staged/linux-x64" \
+            -SearchDir "$HOME/ipopt-env/lib"
 
-      - name: Upload native-linux-x64
+      - name: Upload ipopt-payload-linux-x64
         uses: actions/upload-artifact@v4
         with:
-          name: native-linux-x64
+          name: ipopt-payload-linux-x64
           path: staged/
 
-  # ── macOS native (per-arch): build IPOPT wrapper + bundle conda dylib closure
+  # ── macOS payload (per-arch): bundle conda libipopt dylib closure ─────────
   native-macos:
     strategy:
       fail-fast: false
@@ -197,75 +138,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
+      - name: Install PowerShell + micromamba
+        run: brew install powershell micromamba
 
-      - name: Install build tools
-        run: brew install autoconf autoconf-archive automake libtool swig powershell micromamba
+      - name: Install IPOPT runtime (macOS via conda-forge, OpenBLAS)
+        run: micromamba create -c conda-forge -p $HOME/ipopt-env ipopt nomkl -y
 
-      - name: Install MUMPS and IPOPT (macOS via conda-forge)
+      - name: Bundle libipopt + dependency closure (@loader_path + ad-hoc sign)
         run: |
-          micromamba create -c conda-forge -p $HOME/mumps-env mumps-seq ipopt -y
-          echo "MUMPS_PREFIX=$HOME/mumps-env" >> $GITHUB_ENV
-          echo "IPOPT_PREFIX=$HOME/mumps-env" >> $GITHUB_ENV
-          sudo mkdir -p /usr/local/lib
-          for lib in "$HOME/mumps-env/lib/lib"*mumps*.dylib \
-                     "$HOME/mumps-env/lib/libpord"*.dylib \
-                     "$HOME/mumps-env/lib/libipopt"*.dylib; do
-            [ -f "$lib" ] || continue
-            base=$(basename "$lib")
-            sudo ln -sf "$lib" "/usr/local/lib/$base"
-            noseq="${base/_seq/}"
-            [ "$noseq" != "$base" ] && sudo ln -sf "$lib" "/usr/local/lib/$noseq"
-          done
-          SDK=$(xcrun --show-sdk-path 2>/dev/null || true)
-          if [ -n "$SDK" ] && [ ! -f "$SDK/usr/lib/libm.tbd" ]; then
-            printf '--- !tapi-tbd\ntbd-version: 4\ntargets: [ arm64-apple-macos14.0, x86_64-apple-macos14.0 ]\ninstall-name: /usr/lib/libm.dylib\n...\n' \
-              | sudo tee "$SDK/usr/lib/libm.tbd" > /dev/null 2>&1 || true
-          fi
-
-      - name: Regenerate IPOPT-enabled Java bindings (superset)
-        run: |
-          mkdir -p PagmoNet4j.ipopt/src/generated/java/io/github/samthegliderpilot/pagmonet4j
-          mkdir -p PagmoNet4j/pagmoWrapper/generated
-          swig -java -c++ \
-            -package "io.github.samthegliderpilot.pagmonet4j" \
-            -outdir PagmoNet4j.ipopt/src/generated/java/io/github/samthegliderpilot/pagmonet4j \
-            -o PagmoNet4j/pagmoWrapper/generated/pagmonet4j_wrap.cxx \
-            -DPAGMO_WITH_IPOPT_JNI \
-            -Iswig \
-            -Inative \
-            swig/Pagmo4jSwigInterface.i
-
-      - name: Bootstrap vcpkg
-        run: |
-          git clone https://github.com/microsoft/vcpkg ~/vcpkg --depth 1
-          ~/vcpkg/bootstrap-vcpkg.sh -disableMetrics
-          echo "VCPKG_ROOT=$HOME/vcpkg" >> $GITHUB_ENV
-
-      - name: Cache vcpkg
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/vcpkg/installed
-            ~/.cache/vcpkg/archives
-          key: vcpkg-${{ matrix.rid }}-java-ipopt-v3-${{ hashFiles('ports/**', 'PagmoNet4j/pagmoWrapper/CMakeLists.txt') }}
-          restore-keys: vcpkg-${{ matrix.rid }}-java-ipopt-v3-
-
-      - name: Build native with IPOPT
-        env:
-          PAGMONET4J_ROOT: ${{ github.workspace }}/PagmoNet4j
-          PAGMONET4J_FEATURES: nlopt,ipopt
-        run: pwsh PagmoNet4j.ipopt/scripts/build-native.ps1 -Configuration Release
-
-      - name: Bundle native + dependency closure (@loader_path + ad-hoc sign)
-        run: |
-          pwsh PagmoNet4j.ipopt/scripts/bundle-native-deps.ps1 \
-            -WrapperPath "$PWD/PagmoNet4j/pagmoWrapper/build/libpagmonet4j.dylib" \
+          pwsh scripts/bundle-native-deps.ps1 \
             -OutputDir "$PWD/staged/${{ matrix.rid }}" \
-            -SearchDir "$HOME/mumps-env/lib"
+            -SearchDir "$HOME/ipopt-env/lib"
 
       - name: Verify nothing resolves outside the package dir
         run: |
@@ -273,26 +156,19 @@ jobs:
           for f in "$dir"/*.dylib; do
             echo "== $f =="
             otool -L "$f"
-            if otool -L "$f" | tail -n +2 | grep -E '(mumps-env|/opt/homebrew|/usr/local|vcpkg)'; then
+            if otool -L "$f" | tail -n +2 | grep -E '(ipopt-env|/opt/homebrew|/usr/local/miniconda|conda)'; then
               echo "ERROR: $f still references a build-tree path above" >&2
               exit 1
             fi
           done
 
-      - name: Dump cmake link line on failure
-        if: failure()
-        run: |
-          linktxt="PagmoNet4j/pagmoWrapper/build/CMakeFiles/pagmonet4j.dir/link.txt"
-          echo "========== link.txt =========="
-          cat "$linktxt" 2>/dev/null || echo "(link.txt not found)"
-
-      - name: Upload native-${{ matrix.rid }}
+      - name: Upload ipopt-payload-${{ matrix.rid }}
         uses: actions/upload-artifact@v4
         with:
-          name: native-${{ matrix.rid }}
+          name: ipopt-payload-${{ matrix.rid }}
           path: staged/
 
-  # ── Pack: assemble all RIDs into one self-contained fat JAR ───────────────
+  # ── Pack: assemble all RIDs into one self-contained payload JAR ────────────
   pack:
     needs: [meta, native-windows, native-linux, native-macos]
     runs-on: ubuntu-latest
@@ -304,35 +180,20 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Install SWIG
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y swig
-
-      - name: Regenerate IPOPT-enabled Java bindings (superset)
-        run: |
-          mkdir -p PagmoNet4j.ipopt/src/generated/java/io/github/samthegliderpilot/pagmonet4j
-          mkdir -p PagmoNet4j/pagmoWrapper/generated
-          swig -java -c++ \
-            -package "io.github.samthegliderpilot.pagmonet4j" \
-            -outdir PagmoNet4j.ipopt/src/generated/java/io/github/samthegliderpilot/pagmonet4j \
-            -o PagmoNet4j/pagmoWrapper/generated/pagmonet4j_wrap.cxx \
-            -DPAGMO_WITH_IPOPT_JNI \
-            -Iswig \
-            -Inative \
-            swig/Pagmo4jSwigInterface.i
-
-      - name: Download all platform natives
+      # The payload JAR has no Java source and records the base as a POM dependency only, so it
+      # needs neither SWIG nor the base artifact to assemble. staged-natives/<rid>/ is read by
+      # PagmoNet4j.ipopt/build.gradle.kts (rootProject dir) and bundled into natives/<rid>/.
+      - name: Download all platform payloads
         uses: actions/download-artifact@v4
         with:
-          pattern: native-*
-          path: staged-natives
+          pattern: ipopt-payload-*
+          path: PagmoNet4j.ipopt/staged-natives
           merge-multiple: true
 
       - name: Show assembled native tree
-        run: find staged-natives -type f | sort
+        run: find PagmoNet4j.ipopt/staged-natives -type f | sort
 
-      - name: Assemble fat JAR + publish to local file repo (for the clean-room gate)
+      - name: Assemble payload JAR + publish to local file repo (for the clean-room gate)
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon -x test \
@@ -343,7 +204,7 @@ jobs:
       - name: Show published artifact
         run: find PagmoNet4j.ipopt/build/localrepo -type f | sort
 
-      - name: Upload fat JAR (for inspection)
+      - name: Upload payload JAR (for inspection)
         uses: actions/upload-artifact@v4
         with:
           name: package-final
@@ -355,9 +216,12 @@ jobs:
           name: maven-repo
           path: PagmoNet4j.ipopt/build/localrepo/
 
-  # ── Clean-room gate: consume the published-shaped JAR, no dev tools ────────
+  # ── Clean-room gate: consume the published-shaped JARs, no dev tools, OFFLINE ────
+  # Stages BOTH the base (built in-run) and the companion into one local maven repo; the clean-room
+  # resolves both from there, so a real IPOPT solve runs with no GitHub Packages, no
+  # PAGMO4J_NATIVE_DIR and no conda -- proving base + companion end-to-end without publishing anything.
   cleanroom:
-    needs: [meta, pack]
+    needs: [meta, base, pack]
     strategy:
       fail-fast: false
       matrix:
@@ -379,13 +243,19 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Download the published-shaped maven repo
+      - name: Download the companion maven repo
         uses: actions/download-artifact@v4
         with:
           name: maven-repo
           path: localrepo
 
-      - name: Resolve pagmonet4j-ipopt + run IPOPT solve (no PAGMO4J_NATIVE_DIR, no conda)
+      - name: Download the base maven repo into the same local repo
+        uses: actions/download-artifact@v4
+        with:
+          name: base-maven-repo
+          path: localrepo
+
+      - name: Resolve pagmonet4j-ipopt + base, run IPOPT solve (offline — no GitHub Packages, no conda)
         shell: bash
         run: |
           chmod +x gradlew
@@ -407,29 +277,13 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Install SWIG
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y swig
-
-      - name: Regenerate IPOPT-enabled Java bindings (superset)
-        run: |
-          mkdir -p PagmoNet4j.ipopt/src/generated/java/io/github/samthegliderpilot/pagmonet4j
-          mkdir -p PagmoNet4j/pagmoWrapper/generated
-          swig -java -c++ \
-            -package "io.github.samthegliderpilot.pagmonet4j" \
-            -outdir PagmoNet4j.ipopt/src/generated/java/io/github/samthegliderpilot/pagmonet4j \
-            -o PagmoNet4j/pagmoWrapper/generated/pagmonet4j_wrap.cxx \
-            -DPAGMO_WITH_IPOPT_JNI \
-            -Iswig \
-            -Inative \
-            swig/Pagmo4jSwigInterface.i
-
-      - name: Download all platform natives
+      # Re-stage the natives so the published JAR carries the payload (a fresh job has no
+      # staged-natives from the pack job).
+      - name: Download all platform payloads
         uses: actions/download-artifact@v4
         with:
-          pattern: native-*
-          path: staged-natives
+          pattern: ipopt-payload-*
+          path: PagmoNet4j.ipopt/staged-natives
           merge-multiple: true
 
       - name: Create GitHub Release
@@ -441,7 +295,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Publish fat JAR to GitHub Packages
+      - name: Publish payload JAR to GitHub Packages
         if: ${{ github.event_name == 'push' || inputs.dry_run == false }}
         run: |
           chmod +x gradlew

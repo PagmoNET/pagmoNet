@@ -1,0 +1,275 @@
+name: _build-base-dotnet (reusable)
+
+# Reusable: builds the base Pagmo.NET native wrapper for every RID and packs the base .nupkg with
+# all platform natives injected. Uploads it as the `base-package` artifact. Called by BOTH
+# release-dotnet.yml (which then runs the base clean-room + publishes) and release-dotnet-ipopt.yml
+# (which stages the base into a local feed so its base+companion clean-room runs fully offline --
+# nothing has to be published to test). Single source of truth for how the base is built.
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: 'Version to stamp into the base package'
+        required: true
+        type: string
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+
+  # ── Windows: build native DLL + pack NuGet (Windows runtime only) ──────────
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+
+      - name: Bootstrap vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg C:/vcpkg --depth 1
+          C:/vcpkg/bootstrap-vcpkg.bat -disableMetrics
+          echo "VCPKG_ROOT=C:/vcpkg" >> $env:GITHUB_ENV
+        shell: pwsh
+
+      - name: Cache vcpkg installed
+        uses: actions/cache@v4
+        with:
+          path: C:/vcpkg/installed
+          key: vcpkg-windows-dotnet-${{ hashFiles('ports/**', 'triplets/**', 'native/CMakeLists.txt', 'scripts/build-native.ps1') }}
+          restore-keys: vcpkg-windows-dotnet-
+
+      - name: Install SWIG
+        run: choco install swig --yes
+        shell: pwsh
+
+      - name: Regenerate SWIG C# bindings
+        run: pwsh pagmo.NET/createSwigWrappersAndPlaceThem.ps1
+        shell: pwsh
+
+      - name: Build release artifacts
+        run: |
+          pwsh pagmo.NET/scripts/build-release-artifacts.ps1 `
+            -Version ${{ inputs.version }} `
+            -Configuration Release `
+            -SkipReleaseGates
+        shell: pwsh
+
+      - name: Run tests
+        run: |
+          $env:PATH = "$(Resolve-Path native\win-build);$env:PATH"
+          dotnet test pagmo.NET/Tests/Tests.Pagmo.NET/Tests.Pagmo.NET.csproj -p:Platform=x64 --logger "console;verbosity=minimal"
+        shell: pwsh
+
+      - name: Upload nupkg
+        uses: actions/upload-artifact@v4
+        with:
+          name: nupkg-windows
+          path: pagmo.NET/artifacts/release/${{ inputs.version }}/nuget/
+
+  # ── Linux: build libPagmoWrapper.so ──────────────────────────────────────
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential swig curl zip unzip tar \
+            autoconf autoconf-archive automake libtool
+
+      - name: Install PowerShell
+        run: |
+          source /etc/os-release
+          wget -q "https://packages.microsoft.com/config/ubuntu/${VERSION_ID}/packages-microsoft-prod.deb" -O ms-prod.deb
+          sudo dpkg -i ms-prod.deb
+          sudo apt-get update
+          sudo apt-get install -y powershell
+
+      - name: Bootstrap vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg ~/vcpkg --depth 1
+          ~/vcpkg/bootstrap-vcpkg.sh -disableMetrics
+          echo "VCPKG_ROOT=$HOME/vcpkg" >> $GITHUB_ENV
+
+      - name: Cache vcpkg installed
+        uses: actions/cache@v4
+        with:
+          path: ~/vcpkg/installed
+          key: vcpkg-linux-dotnet-${{ hashFiles('ports/**', 'triplets/**', 'native/CMakeLists.txt', 'scripts/build-native.ps1') }}
+          restore-keys: vcpkg-linux-dotnet-
+
+      - name: Regenerate SWIG C# bindings
+        run: pwsh pagmo.NET/createSwigWrappersAndPlaceThem.ps1
+
+      - name: Build native
+        run: pwsh pagmo.NET/scripts/build-native.ps1 -Configuration Release
+
+      - name: Run tests
+        run: |
+          export LD_LIBRARY_PATH="$(pwd)/native/build:$LD_LIBRARY_PATH"
+          dotnet test pagmo.NET/Tests/Tests.Pagmo.NET/Tests.Pagmo.NET.csproj -p:Platform=x64 --logger "console;verbosity=minimal"
+
+      - name: Upload native artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-linux
+          path: native/build/libPagmoWrapper.so
+
+  # ── macOS: build arm64 + x86_64 universal binary ─────────────────────────
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+
+      - name: Install build tools
+        run: brew install autoconf autoconf-archive automake libtool swig
+
+      - name: Create libm.tbd stub for Xcode 16.4+
+        run: |
+          SDK=$(xcrun --show-sdk-path 2>/dev/null || true)
+          if [ -n "$SDK" ] && [ ! -f "$SDK/usr/lib/libm.tbd" ]; then
+            printf '--- !tapi-tbd\ntbd-version: 4\ntargets: [ arm64-apple-macos14.0, x86_64-apple-macos14.0 ]\ninstall-name: /usr/lib/libm.dylib\n...\n' \
+              | sudo tee "$SDK/usr/lib/libm.tbd" > /dev/null 2>&1 || true
+          fi
+
+      - name: Bootstrap vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg ~/vcpkg --depth 1
+          ~/vcpkg/bootstrap-vcpkg.sh -disableMetrics
+          echo "VCPKG_ROOT=$HOME/vcpkg" >> $GITHUB_ENV
+
+      - name: Cache vcpkg installed
+        uses: actions/cache@v4
+        with:
+          path: ~/vcpkg/installed
+          key: vcpkg-macos-dotnet-universal-${{ hashFiles('ports/**', 'triplets/**', 'native/CMakeLists.txt', 'scripts/build-native.ps1') }}
+          restore-keys: vcpkg-macos-dotnet-universal-
+
+      - name: Regenerate SWIG C# bindings
+        run: pwsh pagmo.NET/createSwigWrappersAndPlaceThem.ps1
+
+      - name: Build arm64 slice (native)
+        run: pwsh pagmo.NET/scripts/build-native.ps1 -Configuration Release
+
+      - name: Run tests (arm64)
+        run: |
+          export DYLD_LIBRARY_PATH="$(pwd)/native/build:$DYLD_LIBRARY_PATH"
+          dotnet test pagmo.NET/Tests/Tests.Pagmo.NET/Tests.Pagmo.NET.csproj -p:PlatformTarget=AnyCPU --logger "console;verbosity=minimal"
+
+      - name: Copy arm64 slice
+        run: cp native/build/libPagmoWrapper.dylib libPagmoWrapper-arm64.dylib
+
+      - name: Install x86_64 vcpkg packages
+        run: |
+          $HOME/vcpkg/vcpkg install "pagmo2[nlopt]:x64-osx-static-pic" \
+            "--overlay-triplets=triplets/" \
+            "--overlay-ports=ports/" \
+            "--recurse"
+
+      - name: Build x86_64 slice
+        run: |
+          cmake \
+            -B native/build-x64 \
+            -S native \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE=$HOME/vcpkg/scripts/buildsystems/vcpkg.cmake \
+            -DVCPKG_TARGET_TRIPLET=x64-osx-static-pic \
+            -DVCPKG_OVERLAY_TRIPLETS=triplets/ \
+            -DCMAKE_OSX_ARCHITECTURES=x86_64 \
+            -DPAGMONET_WITH_NLOPT=ON
+          cmake --build native/build-x64 --config Release
+
+      - name: Create universal binary
+        run: |
+          lipo -create \
+            libPagmoWrapper-arm64.dylib \
+            native/build-x64/libPagmoWrapper.dylib \
+            -output libPagmoWrapper.dylib
+          codesign --sign - libPagmoWrapper.dylib
+          lipo -info libPagmoWrapper.dylib
+
+      - name: Upload native artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-macos-universal
+          path: libPagmoWrapper.dylib
+
+  # ── Pack: inject platform natives into the nupkg, publish the base-package artifact ──
+  pack:
+    needs: [build-windows, build-linux, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+
+      - name: Install PowerShell
+        run: |
+          source /etc/os-release
+          wget -q "https://packages.microsoft.com/config/ubuntu/${VERSION_ID}/packages-microsoft-prod.deb" -O ms-prod.deb
+          sudo dpkg -i ms-prod.deb
+          sudo apt-get update
+          sudo apt-get install -y powershell
+
+      - name: Download Windows nupkg
+        uses: actions/download-artifact@v4
+        with:
+          name: nupkg-windows
+          path: nuget/
+
+      - name: Download Linux native
+        uses: actions/download-artifact@v4
+        with:
+          name: native-linux
+          path: native-linux/
+
+      - name: Download macOS universal native
+        uses: actions/download-artifact@v4
+        with:
+          name: native-macos-universal
+          path: native-macos/
+
+      - name: Inject Linux .so and macOS .dylib into nupkg
+        run: |
+          Add-Type -AssemblyName "System.IO.Compression"
+          Add-Type -AssemblyName "System.IO.Compression.FileSystem"
+          $nupkg = "nuget/Pagmo.NET.${{ inputs.version }}.nupkg"
+          $zip = [System.IO.Compression.ZipFile]::Open($nupkg, [System.IO.Compression.ZipArchiveMode]::Update)
+          try {
+            foreach ($entry in @(
+              @{ file = "native-linux/libPagmoWrapper.so";  path = "runtimes/linux-x64/native/libPagmoWrapper.so" },
+              @{ file = "native-macos/libPagmoWrapper.dylib"; path = "runtimes/osx/native/libPagmoWrapper.dylib" }
+            )) {
+              $existing = $zip.GetEntry($entry.path)
+              if ($existing) { $existing.Delete() }
+              [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile(
+                $zip, $entry.file, $entry.path,
+                [System.IO.Compression.CompressionLevel]::Optimal) | Out-Null
+              Write-Host "Injected $($entry.path)"
+            }
+          } finally {
+            $zip.Dispose()
+          }
+        shell: pwsh
+
+      - name: Upload base-package (consumed by the base clean-room/publish and the companion feed)
+        uses: actions/upload-artifact@v4
+        with:
+          name: base-package
+          path: nuget/

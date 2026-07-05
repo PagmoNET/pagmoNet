@@ -17,12 +17,21 @@ on:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
-# Pagmo.NET.Ipopt ships a SELF-CONTAINED native package: each platform job builds the
-# IPOPT-enabled wrapper and bundles its full dynamic dependency closure
-# (IPOPT/MUMPS/OpenBLAS/gfortran on macOS+Windows; fully static on Linux) into
-# runtimes/<rid>/native. The pack job assembles all RIDs into one .nupkg, and the
-# clean-room gate proves that package works on a machine with no dev tools or conda
-# before anything is published.
+# Pagmo.NET.Ipopt is a PURE, EPL-2.0 NATIVE PAYLOAD: it ships libipopt and its dependency
+# closure (MUMPS/OpenBLAS/gfortran runtime) laid out under runtimes/<rid>/native, and NOTHING
+# else. No pagmo, no managed code, no PagmoWrapper -- the base Pagmo.NET package carries the
+# `ipopt` algorithm, which loads this libipopt at runtime via dlopen (deferred_ipopt). So this
+# release builds NO native wrapper and needs NO vcpkg/IPOPT toolchain: each platform job just
+# assembles conda-forge's libipopt closure (bundle-native-deps.ps1), the pack job packs it into
+# one .nupkg, and the clean-room gate proves base + companion together solve HS71 on a machine
+# with no dev tools and no conda.
+#
+# SELF-CONTAINED / OFFLINE GATE: the clean-room proves base + companion together, so it needs a
+# real base package. Rather than require the base to be published first, this workflow builds the
+# base in the same run via the shared _build-base-dotnet.yml reusable workflow and stages it into a
+# local feed alongside the companion. The clean-room's nuget.config points at ONLY that local feed
+# (no NuGet.org), so a dry-run publishes nothing yet still proves the whole stack end-to-end.
+# (nomkl forces OpenBLAS instead of MKL: ~42 MB vs ~570 MB, under NuGet's 250 MB per-package limit.)
 
 jobs:
 
@@ -41,39 +50,18 @@ jobs:
           if [ -z "$v" ]; then echo "Could not resolve a version" >&2; exit 1; fi
           echo "VERSION=$v" >> "$GITHUB_OUTPUT"
 
-  # ── Windows native: build IPOPT wrapper + bundle conda DLL closure ────────
+  # ── Build the base .nupkg in-run (shared) so the clean-room can be fully offline ──
+  base:
+    needs: meta
+    uses: ./.github/workflows/_build-base-dotnet.yml
+    with:
+      version: ${{ needs.meta.outputs.version }}
+
+  # ── Windows payload: bundle conda libipopt DLL closure ────────────────────
   native-windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.x'
-
-      - name: Install SWIG
-        run: choco install swig --yes
-        shell: pwsh
-
-      - name: Regenerate IPOPT-enabled C# bindings
-        run: pwsh pagmo.NET/createSwigWrappersAndPlaceThem.ps1 -WithIpopt
-        shell: pwsh
-
-      - name: Bootstrap vcpkg
-        run: |
-          git clone https://github.com/microsoft/vcpkg C:/vcpkg --depth 1
-          C:/vcpkg/bootstrap-vcpkg.bat -disableMetrics
-          echo "VCPKG_ROOT=C:/vcpkg" >> $env:GITHUB_ENV
-        shell: pwsh
-
-      - name: Cache vcpkg
-        uses: actions/cache@v4
-        with:
-          path: |
-            C:/vcpkg/installed
-            ~/AppData/Local/vcpkg/archives
-          key: vcpkg-windows-dotnet-ipopt-v2-${{ hashFiles('ports/**', 'native/CMakeLists.txt') }}
-          restore-keys: vcpkg-windows-dotnet-ipopt-v2-
 
       - uses: mamba-org/setup-micromamba@v2
         with:
@@ -81,92 +69,61 @@ jobs:
           init-shell: 'none'
           generate-run-shell: 'false'
 
-      - name: Install IPOPT (Windows via conda-forge)
-        run: |
-          micromamba create -c conda-forge -p C:\ipopt-env ipopt -y
-          echo "IPOPT_PREFIX=C:\ipopt-env\Library" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Install IPOPT runtime (Windows via conda-forge, OpenBLAS)
+        run: micromamba create -c conda-forge -p C:\ipopt-env ipopt nomkl -y
         shell: pwsh
 
-      - name: Build native with IPOPT
-        env:
-          VCPKG_OVERLAY_PORTS: ${{ github.workspace }}/ports
-        run: pwsh scripts/build-native.ps1 -Configuration Release -WithIpopt
-        shell: pwsh
-
-      - name: Bundle native + dependency closure
+      - name: Bundle libipopt + dependency closure
         run: |
           pwsh scripts/bundle-native-deps.ps1 `
-            -WrapperPath native/win-build/PagmoWrapper.dll `
             -OutputDir staged/runtimes/win-x64/native `
             -SearchDir C:\ipopt-env\Library\bin
         shell: pwsh
 
-      - name: Upload native-win-x64
+      - name: Upload ipopt-payload-win-x64
         uses: actions/upload-artifact@v4
         with:
-          name: native-win-x64
+          name: ipopt-payload-win-x64
           path: staged/
 
-  # ── Linux native: fully static, self-contained .so ───────────────────────
+  # ── Linux payload: bundle conda libipopt .so closure (RPATH=$ORIGIN) ──────
   native-linux:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.x'
-
-      - name: Install build tools
+      - name: Install PowerShell + patchelf
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake build-essential swig curl zip unzip tar \
-            autoconf autoconf-archive automake libtool libmumps-seq-dev
-
-      - name: Regenerate IPOPT-enabled C# bindings
-        run: pwsh pagmo.NET/createSwigWrappersAndPlaceThem.ps1 -WithIpopt
-
-      - name: Install PowerShell
-        run: |
+          sudo apt-get install -y patchelf
           source /etc/os-release
           wget -q "https://packages.microsoft.com/config/ubuntu/${VERSION_ID}/packages-microsoft-prod.deb" -O ms-prod.deb
           sudo dpkg -i ms-prod.deb
           sudo apt-get update
           sudo apt-get install -y powershell
 
-      - name: Bootstrap vcpkg
-        run: |
-          git clone https://github.com/microsoft/vcpkg ~/vcpkg --depth 1
-          ~/vcpkg/bootstrap-vcpkg.sh -disableMetrics
-          echo "VCPKG_ROOT=$HOME/vcpkg" >> $GITHUB_ENV
-
-      - name: Cache vcpkg
-        uses: actions/cache@v4
+      - uses: mamba-org/setup-micromamba@v2
         with:
-          path: |
-            ~/vcpkg/installed
-            ~/.cache/vcpkg/archives
-          key: vcpkg-linux-dotnet-ipopt-${{ hashFiles('ports/**', 'native/CMakeLists.txt') }}
-          restore-keys: vcpkg-linux-dotnet-ipopt-
+          micromamba-version: 'latest'
+          init-shell: 'none'
+          generate-run-shell: 'false'
 
-      - name: Build native with IPOPT
-        env:
-          VCPKG_OVERLAY_PORTS: ${{ github.workspace }}/ports
-        run: pwsh scripts/build-native.ps1 -Configuration Release -WithIpopt
+      - name: Install IPOPT runtime (Linux via conda-forge, OpenBLAS)
+        run: micromamba create -c conda-forge -p $HOME/ipopt-env ipopt nomkl -y
 
-      - name: Bundle native (static — copy through)
+      - name: Bundle libipopt + dependency closure
         run: |
           pwsh scripts/bundle-native-deps.ps1 \
-            -WrapperPath "$PWD/native/build/libPagmoWrapper.so" \
-            -OutputDir "$PWD/staged/runtimes/linux-x64/native"
+            -OutputDir "$PWD/staged/runtimes/linux-x64/native" \
+            -SearchDir "$HOME/ipopt-env/lib"
 
-      - name: Upload native-linux-x64
+      - name: Upload ipopt-payload-linux-x64
         uses: actions/upload-artifact@v4
         with:
-          name: native-linux-x64
+          name: ipopt-payload-linux-x64
           path: staged/
 
-  # ── macOS native (per-arch): build IPOPT wrapper + bundle conda dylib closure
+  # ── macOS payload (per-arch): bundle conda libipopt dylib closure ─────────
   native-macos:
     strategy:
       fail-fast: false
@@ -180,63 +137,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.x'
+      - name: Install PowerShell + micromamba
+        run: brew install powershell micromamba
 
-      - name: Install build tools
-        run: brew install autoconf autoconf-archive automake libtool swig powershell micromamba
+      - name: Install IPOPT runtime (macOS via conda-forge, OpenBLAS)
+        run: micromamba create -c conda-forge -p $HOME/ipopt-env ipopt nomkl -y
 
-      - name: Install MUMPS and IPOPT (macOS via conda-forge)
-        run: |
-          micromamba create -c conda-forge -p $HOME/mumps-env mumps-seq ipopt -y
-          echo "MUMPS_PREFIX=$HOME/mumps-env" >> $GITHUB_ENV
-          echo "IPOPT_PREFIX=$HOME/mumps-env" >> $GITHUB_ENV
-          sudo mkdir -p /usr/local/lib
-          for lib in "$HOME/mumps-env/lib/lib"*mumps*.dylib \
-                     "$HOME/mumps-env/lib/libpord"*.dylib \
-                     "$HOME/mumps-env/lib/libipopt"*.dylib; do
-            [ -f "$lib" ] || continue
-            base=$(basename "$lib")
-            sudo ln -sf "$lib" "/usr/local/lib/$base"
-            noseq="${base/_seq/}"
-            [ "$noseq" != "$base" ] && sudo ln -sf "$lib" "/usr/local/lib/$noseq"
-          done
-          SDK=$(xcrun --show-sdk-path 2>/dev/null || true)
-          if [ -n "$SDK" ] && [ ! -f "$SDK/usr/lib/libm.tbd" ]; then
-            printf '--- !tapi-tbd\ntbd-version: 4\ntargets: [ arm64-apple-macos14.0, x86_64-apple-macos14.0 ]\ninstall-name: /usr/lib/libm.dylib\n...\n' \
-              | sudo tee "$SDK/usr/lib/libm.tbd" > /dev/null 2>&1 || true
-          fi
-
-      - name: Regenerate IPOPT-enabled C# bindings
-        run: pwsh pagmo.NET/createSwigWrappersAndPlaceThem.ps1 -WithIpopt
-
-      - name: Bootstrap vcpkg
-        run: |
-          git clone https://github.com/microsoft/vcpkg ~/vcpkg --depth 1
-          ~/vcpkg/bootstrap-vcpkg.sh -disableMetrics
-          echo "VCPKG_ROOT=$HOME/vcpkg" >> $GITHUB_ENV
-
-      - name: Cache vcpkg
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/vcpkg/installed
-            ~/.cache/vcpkg/archives
-          key: vcpkg-${{ matrix.rid }}-dotnet-ipopt-v3-${{ hashFiles('ports/**', 'native/CMakeLists.txt') }}
-          restore-keys: vcpkg-${{ matrix.rid }}-dotnet-ipopt-v3-
-
-      - name: Build native with IPOPT
-        env:
-          VCPKG_OVERLAY_PORTS: ${{ github.workspace }}/ports
-        run: pwsh scripts/build-native.ps1 -Configuration Release -WithIpopt
-
-      - name: Bundle native + dependency closure (@loader_path + ad-hoc sign)
+      - name: Bundle libipopt + dependency closure (@loader_path + ad-hoc sign)
         run: |
           pwsh scripts/bundle-native-deps.ps1 \
-            -WrapperPath "$PWD/native/build/libPagmoWrapper.dylib" \
             -OutputDir "$PWD/staged/runtimes/${{ matrix.rid }}/native" \
-            -SearchDir "$HOME/mumps-env/lib"
+            -SearchDir "$HOME/ipopt-env/lib"
 
       - name: Verify nothing resolves outside the package dir
         run: |
@@ -244,16 +155,16 @@ jobs:
           for f in "$dir"/*.dylib; do
             echo "== $f =="
             otool -L "$f"
-            if otool -L "$f" | tail -n +2 | grep -E '(mumps-env|/opt/homebrew|/usr/local|vcpkg)'; then
+            if otool -L "$f" | tail -n +2 | grep -E '(ipopt-env|/opt/homebrew|/usr/local/miniconda|conda)'; then
               echo "ERROR: $f still references a build-tree path above" >&2
               exit 1
             fi
           done
 
-      - name: Upload native-${{ matrix.rid }}
+      - name: Upload ipopt-payload-${{ matrix.rid }}
         uses: actions/upload-artifact@v4
         with:
-          name: native-${{ matrix.rid }}
+          name: ipopt-payload-${{ matrix.rid }}
           path: staged/
 
   # ── Pack: assemble all RIDs into one self-contained .nupkg ────────────────
@@ -279,13 +190,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y powershell
 
-      - name: Regenerate IPOPT-enabled C# bindings (managed compile only)
-        run: pwsh pagmo.NET/createSwigWrappersAndPlaceThem.ps1 -WithIpopt
+      # The companion packs a ProjectReference to the base, so the base managed assembly must
+      # compile -- which needs its generated bindings. No native wrapper is built here.
+      - name: Regenerate C# bindings (base managed compile only)
+        run: pwsh pagmo.NET/createSwigWrappersAndPlaceThem.ps1
 
-      - name: Download all platform natives
+      - name: Download all platform payloads
         uses: actions/download-artifact@v4
         with:
-          pattern: native-*
+          pattern: ipopt-payload-*
           path: staged-runtimes
           merge-multiple: true
 
@@ -305,9 +218,12 @@ jobs:
           name: nupkg
           path: artifacts/Pagmo.NET.Ipopt.*.nupkg
 
-  # ── Clean-room gate: consume the published-shaped package, no dev tools ────
+  # ── Clean-room gate: consume the published-shaped packages, no dev tools, OFFLINE ────
+  # Stages BOTH the base (built in-run) and the companion into one local feed; the nuget.config
+  # sees ONLY that feed, so a real IPOPT solve runs with no NuGet.org, no conda, no LD/DYLD hints
+  # -- proving base + companion end-to-end without publishing anything.
   cleanroom:
-    needs: [meta, pack]
+    needs: [meta, base, pack]
     strategy:
       fail-fast: false
       matrix:
@@ -328,13 +244,19 @@ jobs:
         with:
           dotnet-version: '10.x'
 
-      - name: Download nupkg
+      - name: Download companion nupkg into the local feed
         uses: actions/download-artifact@v4
         with:
           name: nupkg
           path: localfeed
 
-      - name: Configure clean-room to see ONLY the local feed
+      - name: Download base nupkg into the same local feed
+        uses: actions/download-artifact@v4
+        with:
+          name: base-package
+          path: localfeed
+
+      - name: Configure clean-room to see ONLY the local feed (base + companion)
         working-directory: pagmo.NET.ipopt/cleanroom
         shell: bash
         run: |
@@ -348,7 +270,7 @@ jobs:
           </configuration>
           EOF
 
-      - name: Add package + run IPOPT solve (no conda, no LD/DYLD hints)
+      - name: Add package + run IPOPT solve (offline — no NuGet.org, no conda, no LD/DYLD hints)
         working-directory: pagmo.NET.ipopt/cleanroom
         shell: bash
         run: |

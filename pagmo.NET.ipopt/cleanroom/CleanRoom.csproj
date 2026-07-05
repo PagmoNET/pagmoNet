@@ -14,8 +14,10 @@
     <Nullable>disable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
     <Platforms>x64</Platforms>
-    <!-- The workflow writes a nuget.config next to this project with <clear/> + the
-         local feed, so restore only ever sees the package under test. -->
+    <!-- The workflow writes a nuget.config next to this project with <clear/> + ONE local feed
+         holding BOTH the companion under test and the same-version base Pagmo.NET (built in the
+         same run). Restore is fully offline, so the gate proves base + companion without any
+         publish. -->
   </PropertyGroup>
 
 </Project>

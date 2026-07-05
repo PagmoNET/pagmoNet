@@ -63,8 +63,12 @@
        folder as the base package's PagmoWrapper library, where deferred_ipopt's dlopen finds
        them (@loader_path / same directory). This package ships NO PagmoWrapper library; that
        belongs to the base package. -->
+  <!-- PackagePath must resolve to the FULL file path (RecursiveDir + name), not just the
+       directory: NuGet treats a directory PackagePath as a destination and re-appends the
+       file's source-relative path under it, which would double the runtimes/<rid>/native
+       prefix. Giving the complete path makes NuGet place each file verbatim. -->
   <ItemGroup Condition="'$(PagmoNativePackDir)' != ''">
-    <None Include="$(PagmoNativePackDir)\**\*" Pack="true" PackagePath="%(RecursiveDir)" />
+    <None Include="$(PagmoNativePackDir)\**\*" Pack="true" PackagePath="%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>

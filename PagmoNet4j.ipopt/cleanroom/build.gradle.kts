@@ -2,9 +2,11 @@ plugins {
     application
 }
 
-// The ONLY package source is the local file repo staged by the publish workflow
-// (download artifact "maven-repo" → ../localrepo). mavenCentral is a fallback for any
-// transitive deps; the fat jar is self-contained so in practice nothing else is pulled.
+// The ONLY package source is the local file repo staged by the publish workflow: it holds BOTH
+// the pagmonet4j-ipopt companion payload AND the same-version base pagmonet4j (the JNI wrapper +
+// the ipopt algorithm), both built in the same run. Resolution is fully offline, so the gate
+// proves base + companion together without anything being published. mavenCentral is a fallback
+// for any incidental transitive deps.
 repositories {
     val localRepo = (findProperty("localRepo") as String?) ?: "../localrepo"
     maven { url = uri(file(localRepo)) }
