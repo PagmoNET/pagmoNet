@@ -175,54 +175,29 @@ $wrapperName = [System.IO.Path]::GetFileName($WrapperPath)
 $stagedWrapper = Join-Path $OutputDir $wrapperName
 Copy-Item $WrapperPath $stagedWrapper -Force
 
-# Locate dumpbin from the latest VS install (windows-latest runners ship VS 2022).
-function Get-Dumpbin {
-    $vsWhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
-    if (-not (Test-Path $vsWhere)) { return $null }
-    $vsPath = & $vsWhere -latest -property installationPath
-    if (-not $vsPath) { return $null }
-    $hit = Get-ChildItem -Path (Join-Path $vsPath "VC\Tools\MSVC") -Recurse -Filter "dumpbin.exe" `
-        -ErrorAction SilentlyContinue | Where-Object { $_.FullName -match 'Hostx64\\x64' } | Select-Object -First 1
-    if ($hit) { return $hit.FullName }
-    return (Get-Command dumpbin.exe -ErrorAction SilentlyContinue)?.Source
+# Windows system DLLs, API sets, the VC++ redistributable, and the UCRT are provided by the OS
+# or the VC++ redistributable and must never be bundled -- even when the conda-forge prefix ships
+# its own copies of them (it does: MSVCP140, VCRUNTIME140*, api-ms-win-crt-*, ...). Skip them
+# regardless of -SearchDir, the same assumption every native NuGet makes.
+function Test-IsWindowsSystemDll([string]$name) {
+    return ($name -match '(?i)^(api-ms-win-|ext-ms-win-)') `
+        -or ($name -match '(?i)^(msvcp\d+|vcruntime\d+|msvcr\d+|ucrtbase|concrt\d+|vcomp\d+|vccorlib\d+|vcamp\d+|mfc\d+)(_\w+)?\.dll$') `
+        -or ($name -match '(?i)^(kernel32|kernelbase|user32|advapi32|ole32|oleaut32|ws2_32|shell32|gdi32|gdi32full|ntdll|combase|bcrypt|bcryptprimitives|crypt32|sechost|rpcrt4|shlwapi|setupapi|version|winmm|msvcrt|powrprof|dbghelp)\.dll$')
 }
 
-$dumpbin = Get-Dumpbin
-if (-not $dumpbin) { throw "dumpbin.exe not found (need Visual Studio Build Tools) - cannot walk the DLL dependency closure." }
-
-# Imported DLL names of a PE binary, via dumpbin /dependents.
-function Get-PeDeps([string]$path) {
-    $out = & $dumpbin /dependents $path
-    $deps = @()
-    $inList = $false
-    foreach ($line in $out) {
-        if ($line -match 'Image has the following dependencies:') { $inList = $true; continue }
-        if ($inList) {
-            $t = $line.Trim()
-            if ($t -match '(?i)^[\w\.\-\+]+\.dll$') { $deps += $t }
-            elseif ($t -eq '' -and $deps.Count -gt 0) { break }
-        }
-    }
-    return $deps
-}
-
-# BFS the closure; bundle only DLLs we can find in -SearchDir (everything else is a
-# Windows system DLL or the VC++ runtime, provided by the OS / VC++ redist).
-$bundled = @{}
-$queue = [System.Collections.Queue]::new()
-$queue.Enqueue($stagedWrapper)
-while ($queue.Count -gt 0) {
-    $current = $queue.Dequeue()
-    foreach ($dep in (Get-PeDeps $current)) {
-        if ($bundled.ContainsKey($dep.ToLower())) { continue }
-        $src = Resolve-DepFile $dep
-        if (-not $src) { continue }
-        $staged = Join-Path $OutputDir $dep
-        Copy-Item $src $staged -Force
-        $bundled[$dep.ToLower()] = $staged
-        $queue.Enqueue($staged)
-        Write-Host "  bundled $dep"
+# Copy every non-system DLL from the search dir(s). An import-table walk (dumpbin /dependents)
+# is NOT sufficient for the conda-forge IPOPT env: its libblas/liblapack are thin forwarders
+# that LOAD the real MKL (or OpenBLAS) implementation at runtime, so mkl_rt / mkl_core /
+# mkl_intel_thread / libiomp5md never appear in any import table. The env -- created with just
+# `ipopt` -- IS exactly IPOPT's runtime closure, so copying all of its non-system DLLs is
+# complete by construction. On Windows the DLLs resolve each other from this one directory at
+# load time, so nothing needs install-name/rpath rewriting.
+$count = 0
+foreach ($dir in $searchDirs) {
+    Get-ChildItem -Path $dir -Filter *.dll -File -ErrorAction SilentlyContinue | ForEach-Object {
+        if (Test-IsWindowsSystemDll $_.Name) { return }
+        Copy-Item $_.FullName (Join-Path $OutputDir $_.Name) -Force
+        $count++
     }
 }
-
-Write-Host "Windows: staged $wrapperName + $($bundled.Count) dependencies in $OutputDir"
+Write-Host "Windows: staged $count non-system DLLs from the IPOPT env into $OutputDir"

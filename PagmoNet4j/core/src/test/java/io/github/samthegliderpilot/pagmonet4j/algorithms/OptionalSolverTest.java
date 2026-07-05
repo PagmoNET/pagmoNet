@@ -22,9 +22,10 @@ class OptionalSolverTest {
         }
     }
 
-    // NOTE: no ipopt evolve test here — the base library is IPOPT-free by design, so the
-    // ipopt class is not generated. The IPOPT solve is exercised in the PagmoNet4j.ipopt
-    // superset (and on a clean machine via the cleanroom gate).
+    // NOTE: the base library links no IPOPT, but the `ipopt` algorithm IS present (it loads
+    // libipopt at runtime via dlopen). The actual solve is exercised by
+    // IpoptSolveWhenAvailableTest, which runs only when a libipopt is loadable, and on a clean
+    // machine via the cleanroom gate.
 
     @Test
     void optionalSolverAvailabilityDoesNotThrow() {
