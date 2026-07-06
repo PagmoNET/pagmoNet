@@ -57,8 +57,13 @@ jobs:
           path: |
             C:/vcpkg/installed
             ~/AppData/Local/vcpkg/archives
-          key: vcpkg-windows-dotnet-ipopt-v2-${{ hashFiles('ports/**', 'native/CMakeLists.txt') }}
-          restore-keys: vcpkg-windows-dotnet-ipopt-v2-
+          # v4: bust the superset-era pagmo2[ipopt] cache. The base's ipopt algorithm is
+          # deferred-load (no IPOPT linked), so pagmo must be built WITHOUT the ipopt feature;
+          # a cached pagmo2[ipopt] re-declares class pagmo::ipopt and collides with the SWIG
+          # `using ipopt = deferred_ipopt` alias. Hashing build-native.ps1 (which picks the
+          # feature set) makes future feature changes bust automatically.
+          key: vcpkg-windows-dotnet-ipopt-v4-${{ hashFiles('ports/**', 'triplets/**', 'native/CMakeLists.txt', 'scripts/build-native.ps1') }}
+          restore-keys: vcpkg-windows-dotnet-ipopt-v4-
 
       - uses: mamba-org/setup-micromamba@v2
         with:
@@ -146,8 +151,9 @@ jobs:
           path: |
             ~/vcpkg/installed
             ~/.cache/vcpkg/archives
-          key: vcpkg-linux-dotnet-ipopt-${{ hashFiles('ports/**', 'native/CMakeLists.txt') }}
-          restore-keys: vcpkg-linux-dotnet-ipopt-
+          # v4: bust the superset-era pagmo2[ipopt] cache (see the Windows job for why).
+          key: vcpkg-linux-dotnet-ipopt-v4-${{ hashFiles('ports/**', 'triplets/**', 'native/CMakeLists.txt', 'scripts/build-native.ps1') }}
+          restore-keys: vcpkg-linux-dotnet-ipopt-v4-
 
       - name: Build base native (no IPOPT link; libipopt is dlopen'd at test time)
         env:
@@ -221,8 +227,9 @@ jobs:
           path: |
             ~/vcpkg/installed
             ~/.cache/vcpkg/archives
-          key: vcpkg-macos-dotnet-ipopt-v3-${{ hashFiles('ports/**', 'native/CMakeLists.txt') }}
-          restore-keys: vcpkg-macos-dotnet-ipopt-v3-
+          # v4: bust the superset-era pagmo2[ipopt] cache (see the Windows job for why).
+          key: vcpkg-macos-dotnet-ipopt-v4-${{ hashFiles('ports/**', 'triplets/**', 'native/CMakeLists.txt', 'scripts/build-native.ps1') }}
+          restore-keys: vcpkg-macos-dotnet-ipopt-v4-
 
       - name: Build base native (no IPOPT link; libipopt is dlopen'd at test time)
         env:

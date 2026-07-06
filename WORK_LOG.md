@@ -4,6 +4,36 @@ Active journal for cross-session / cross-device continuity. Newest session on to
 
 ---
 
+## CI result 2026-07-05 — `build-dotnet-ipopt` red (stale vcpkg cache), fixed
+
+First push after the rework: `pagmo.NET`, `PagmoNet4j`, `PagmoNet4j.ipopt` GREEN;
+`pagmo.NET.ipopt` (the `build-dotnet-ipopt.yml` BUILD workflow) RED on all 3 OS with the
+`pagmo::ipopt` redefinition (`GeneratedWrappers.cxx:3801 C2371` / conflicting `using ipopt =
+::pagmoNet::deferred_ipopt` vs pagmo's real `class pagmo::ipopt`).
+
+**Root cause (not a code bug): a stale vcpkg binary cache.** `build-native.ps1` without `-WithIpopt`
+installs `pagmo2[nlopt]` (no ipopt), so a *fresh* pagmo has no `class pagmo::ipopt`. But
+`build-dotnet-ipopt.yml`'s cache key was `...-ipopt-v2-` (Windows) / versionless (Linux) and did
+NOT hash `build-native.ps1`, so it kept restoring a **superset-era `pagmo2[ipopt]` tree**. That
+pagmo's installed `config.hpp` `#define`s `PAGMO_WITH_IPOPT` (defeating our command-line
+`-UPAGMO_WITH_IPOPT`), which un-guards `class pagmo::ipopt` → collides with the SWIG alias. The tell
+in the log: `Requested IPOPT components: header` / `Creating the 'pagmo::IPOPT::header' imported
+target` come from *pagmo's own* CMake config, which only fires when pagmo was built with ipopt. The
+three green jobs used caches that had already busted (`build-java-ipopt` is `-v3-` and hashes
+`build-native.ps1`; the base jobs use the `-dotnet-`/`-java-` keys, all `pagmo2[nlopt]`).
+
+**Fix:** bumped all three `build-dotnet-ipopt.yml` vcpkg cache keys to `-v4-` and aligned the hash
+to `ports/**, triplets/**, native/CMakeLists.txt, scripts/build-native.ps1` (matching the green
+jobs) so the stale tree can't restore and future feature changes auto-bust. Needs a re-push to confirm.
+
+**Residual fragility (post-1.0 hardening candidate):** the SWIG `using ipopt = deferred_ipopt`
+alias will always collide if the *installed* pagmo has the ipopt feature. Deterministic cache
+hygiene avoids it (no workflow builds `pagmo2[ipopt]` anymore), but a truly robust fix would stop
+depending on pagmo never having ipopt — e.g. present the C# type as `pagmo.ipopt` via SWIG
+`%rename` without a C++ `using pagmo::ipopt`. Risky (touches the green base SWIG surface); deferred.
+
+---
+
 ## Session 2026-07-05 — Release `*-ipopt` workflow rework (deferred-load IPOPT)
 
 ### Where we are in the big picture
