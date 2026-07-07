@@ -26,8 +26,25 @@ to Corretto's stale 14.29 and the export at `+0x13080` resolves wrong -> crash. 
 - C# stays `x64-windows-static-md` (unaffected; .NET resolves the system CRT).
 - **Immediate workaround for testing without the rebuild:** run the jars under Temurin, not Corretto.
 
-Verifying locally: rebuilding the JNI with `x64-windows-static` (fresh pagmo build, ~30 min), then
-confirm `dumpbin /dependents pagmonet4j.dll` shows no `msvcp140.dll`, and it runs under Corretto 17.
+**RESOLVED + VERIFIED (static-CRT swing landed).** The first attempt at plain `x64-windows-static`
+failed (CI: pagmo2 Debug build; local: `__imp_` link + a stale-cache red herring). Root causes and
+fixes:
+- Full static needs the **v143** toolset pinned (the unpinned default v145 produced dynamic-UCRT
+  `__imp_` refs that won't link `/MT`) and **release-only** (pagmo2's `/MTd` Debug config fails on
+  runners). Added overlay `triplets/x64-windows-static.cmake` (static CRT + `v143` + `VCPKG_BUILD_TYPE
+  release`), mirroring the working `x64-windows-static-md`.
+- Local link also hit a **stale cmake cache**: `win-build/CMakeCache.txt` kept `Pagmo_DIR` pointing at
+  the old static-md tree after switching triplets → linked the `/MD` pagmo → RuntimeLibrary mismatch.
+  `build-native.ps1` now **wipes `$buildDir` before configure** so a triplet switch can't stick.
+
+Result: `dumpbin /dependents pagmonet4j.dll` → **only `KERNEL32.dll`** (no msvcp140/vcruntime140), and
+a full clean-room IPOPT solve runs **`CLEAN-ROOM PASS  f=0.0` under Corretto 17** (the JDK that
+crashed). The verified jars replaced the old ones in `local-packages/java/`.
+
+**CI status:** the earlier CI failure (pagmo2 x64-windows-static Debug) should be fixed by the new
+release-only/v143 overlay, but that's unconfirmed until pushed. The Java workflows inherit the triplet
+via `build-native.ps1` and the cache keys already hash it (they'll bust + rebuild pagmo static once).
+Also note the C# side stays `x64-windows-static-md` (unchanged) -- only the JNI went fully static.
 
 ---
 

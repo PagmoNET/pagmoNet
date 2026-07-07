@@ -6,31 +6,52 @@
 # Prereq: run scripts/setup-wsl.sh once first. Then:
 #     bash /mnt/c/src/pagmoSharp/pagmoNet/scripts/build-linux-artifacts.sh
 #
-# Reuses the repo's existing (Linux-aware) PowerShell build scripts via the user-local pwsh; the
-# packaging (dotnet pack / gradle) is plain bash. Version is 1.0.0-local.
+# IMPORTANT: this builds on the native ext4 filesystem ($HOME), NOT on /mnt/c. cmake's
+# configure_file fails with "Operation not permitted" on the drvfs-mounted Windows drive, so we
+# stage a source copy to ~/pagmoNet-build, build there, and copy the finished packages back.
+#
+# Reuses the repo's Linux-aware PowerShell build scripts via the user-local pwsh; packaging
+# (dotnet pack / gradle) is plain bash. Version is 1.0.0-local.
 set -euo pipefail
 
-REPO="/mnt/c/src/pagmoSharp/pagmoNet"
+SRC="/mnt/c/src/pagmoSharp/pagmoNet"
+BUILD="$HOME/pagmoNet-build"
 OUT="/mnt/c/src/pagmoSharp/local-packages-linux"
 VER="1.0.0-local"
 export PATH="$HOME/.dotnet:$HOME/.dotnet/tools:$HOME/.local/bin:$PATH"
 export VCPKG_ROOT="${VCPKG_ROOT:-$HOME/vcpkg}"
 export JAVA_HOME="${JAVA_HOME:-$(dirname "$(dirname "$(readlink -f "$(command -v javac)")")")}"
 PWSH="$(command -v pwsh)"
-cd "$REPO"
 mkdir -p "$OUT/dotnet" "$OUT/java"
+
+echo "==> Staging source onto ext4 ($BUILD) — cmake can't configure_file on /mnt/c"
+mkdir -p "$BUILD"
+tar -C "$SRC" \
+  --exclude='./.git' --exclude='*/bin' --exclude='*/obj' \
+  --exclude='*/build' --exclude='*/win-build' --exclude='*/.gradle' \
+  --exclude='*/staged' --exclude='*/staged-natives' --exclude='*/staged-runtimes' \
+  --exclude='*/cleanroom-repo' \
+  -cf - . | tar -C "$BUILD" -xf -
+cd "$BUILD"
 
 echo "==> [0/6] conda libipopt closure (OpenBLAS) for the companion payloads"
 [ -d "$HOME/ipopt-env" ] || micromamba create -c conda-forge -p "$HOME/ipopt-env" ipopt nomkl -y
 IPOPT_LIB="$HOME/ipopt-env/lib"
 
+# Force a CLEAN pagmo (no ipopt feature) so the base .so links zero IPOPT and stays MPL-clean.
+# The portfile disables find_package(IPOPT) when ipopt isn't a requested feature.
+echo "==> Ensuring pagmo2 is built WITHOUT the ipopt feature"
+"$VCPKG_ROOT/vcpkg" remove pagmo2 coin-or-ipopt --recurse 2>/dev/null || true
+
 # ── C# base ────────────────────────────────────────────────────────────────────────────────────
 echo "==> [1/6] C# base native (libPagmoWrapper.so) + nupkg"
 "$PWSH" -NoProfile -File pagmo.NET/createSwigWrappersAndPlaceThem.ps1
 "$PWSH" -NoProfile -File scripts/build-native.ps1 -Configuration Release
-mkdir -p pagmo.NET/pagmoWrapper/build
+mkdir -p pagmo.NET/pagmoWrapper/build /tmp/pkgs
 cp native/build/libPagmoWrapper.so pagmo.NET/pagmoWrapper/build/libPagmoWrapper.so
-dotnet pack pagmo.NET/Pagmo.NET/Pagmo.NET.csproj -c Release -p:Version="$VER" -p:Platform=x64 -o "$OUT/dotnet"
+# Pack to an ext4 dir via the explicit property (the `-o` flag mis-translates to a bare MSBuild
+# arg in some SDKs, and /mnt/c writes are slow), then copy the nupkgs out to the Windows drive.
+dotnet pack pagmo.NET/Pagmo.NET/Pagmo.NET.csproj -c Release -p:Version="$VER" -p:Platform=x64 -p:PackageOutputPath=/tmp/pkgs
 
 # ── C# companion ───────────────────────────────────────────────────────────────────────────────
 echo "==> [2/6] C# companion payload (libipopt closure) + nupkg"
@@ -38,7 +59,8 @@ rm -rf /tmp/staged-cs
 "$PWSH" -NoProfile -File scripts/bundle-native-deps.ps1 \
   -OutputDir /tmp/staged-cs/runtimes/linux-x64/native -SearchDir "$IPOPT_LIB"
 dotnet pack pagmo.NET.ipopt/Pagmo.NET.Ipopt.csproj -c Release -p:Version="$VER" \
-  -p:PagmoNativePackDir=/tmp/staged-cs -o "$OUT/dotnet"
+  -p:PagmoNativePackDir=/tmp/staged-cs -p:PackageOutputPath=/tmp/pkgs
+cp /tmp/pkgs/*.nupkg "$OUT/dotnet/"
 
 # ── Java base ──────────────────────────────────────────────────────────────────────────────────
 echo "==> [3/6] Java base native (libpagmonet4j.so) + jar"
