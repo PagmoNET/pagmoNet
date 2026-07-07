@@ -41,7 +41,13 @@ if ($IsWindows -or $env:OS -eq "Windows_NT") {
         # MSVC DLL — use the standard MSVC triplet. Otherwise fall back to the
         # legacy MinGW/MSYS2 path which requires x64-mingw-static.
         $useCondaIPOPT = $ipoptRequested -and $env:IPOPT_PREFIX
-        $VcpkgTriplet = if ($ipoptRequested -and -not $useCondaIPOPT) { "x64-mingw-static" } else { "x64-windows-static-md" }
+        # x64-windows-static links the CRT STATICALLY (/MT), so pagmonet4j.dll has NO msvcp140.dll
+        # dependency. This is required for the JNI: JVMs such as Amazon Corretto bundle their own
+        # (older) msvcp140.dll in bin/, which loads before the system one and is ABI-incompatible
+        # with a dynamic-CRT (/MD) native -> access violation at the first C++ stdlib call. A static
+        # CRT sidesteps the whole problem, so the jar works on any JDK. (The C# PagmoWrapper.dll
+        # stays /MD static-md -- .NET always resolves the system CRT, so it has no such issue.)
+        $VcpkgTriplet = if ($ipoptRequested -and -not $useCondaIPOPT) { "x64-mingw-static" } else { "x64-windows-static" }
     }
     $buildDir = Join-Path $JavaRoot "pagmoWrapper\win-build"
 } elseif ($IsMacOS) {
@@ -96,6 +102,13 @@ $cmakeArgs = @(
     "-DPAGMO4J_JNI=ON",
     "-DJAVA_HOME=$javaHomeFwd"
 )
+# Match the CRT linkage of the vcpkg static triplet: x64-windows-static uses a static CRT (/MT),
+# so the wrapper itself must compile /MT too (CMP0091 is NEW at cmake 3.22, so the CRT is chosen
+# by CMAKE_MSVC_RUNTIME_LIBRARY). Mixing a /MD wrapper with /MT static deps corrupts the heap.
+# static-md / mingw keep their own defaults.
+if ($VcpkgTriplet -eq "x64-windows-static") {
+    $cmakeArgs += '-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded$<$<CONFIG:Debug>:Debug>'
+}
 if ($IsWindows -or $env:OS -eq "Windows_NT") {
     if ($VcpkgTriplet -eq "x64-mingw-static") {
         # MinGW build: gcc/g++ from MSYS2 MinGW64 must be on PATH.

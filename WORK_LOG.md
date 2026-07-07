@@ -4,6 +4,33 @@ Active journal for cross-session / cross-device continuity. Newest session on to
 
 ---
 
+## 2026-07-06/07 — Java Windows jar crash: root cause + static-CRT fix
+
+**Symptom:** locally-built Windows `pagmonet4j` jar crashes the JVM with `EXCEPTION_ACCESS_VIOLATION`
+in `msvcp140.dll+0x13080` at the first C++ call (`new_ipopt`). C# nupkgs are fine; CI Java is green.
+
+**Root cause (conclusive, from the hs_err loaded-modules list):** the JVM loaded `msvcp140.dll` from
+`C:\Program Files\Amazon Corretto\jdk17\bin\` — **v14.29** (2021) — *before* the system's **v14.50**.
+The JNI is a dynamic-CRT (`/MD`) native built with a recent MSVC toolset (needs ~14.5x), so it binds
+to Corretto's stale 14.29 and the export at `+0x13080` resolves wrong -> crash. CI is green because
+**Temurin** doesn't bundle `msvcp140.dll` (uses the system redist, which matches). C# is fine because
+.NET always resolves the *system* CRT. **This would bite real Corretto users**, even with CI-built jars.
+
+**Fix (implemented):** build the Windows JNI with a **static CRT** so `pagmonet4j.dll` has NO
+`msvcp140.dll` dependency at all -> immune to whatever CRT any JVM bundles.
+- `PagmoNet4j/scripts/build-native.ps1`: Windows default triplet `x64-windows-static-md` ->
+  **`x64-windows-static`**, and add `-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded$<$<CONFIG:Debug>:Debug>`
+  (wrapper compiles `/MT` to match the static-CRT deps; CMP0091 is NEW at cmake 3.22).
+- Java workflow vcpkg cache keys now also hash `PagmoNet4j/scripts/build-native.ps1` (they only hashed
+  the C# `scripts/build-native.ps1` before — a latent bug — so the triplet change now busts + caches).
+- C# stays `x64-windows-static-md` (unaffected; .NET resolves the system CRT).
+- **Immediate workaround for testing without the rebuild:** run the jars under Temurin, not Corretto.
+
+Verifying locally: rebuilding the JNI with `x64-windows-static` (fresh pagmo build, ~30 min), then
+confirm `dumpbin /dependents pagmonet4j.dll` shows no `msvcp140.dll`, and it runs under Corretto 17.
+
+---
+
 ## CI result 2026-07-06 — Linux `build-dotnet-ipopt` still red; robust code fix
 
 After the v4 cache bump, Windows + macOS `build-dotnet-ipopt` went GREEN, but **Linux still failed**

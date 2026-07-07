@@ -65,7 +65,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: C:/vcpkg/installed
-          key: vcpkg-windows-java-${{ hashFiles('ports/**', 'triplets/**', 'PagmoNet4j/pagmoWrapper/CMakeLists.txt', 'scripts/build-native.ps1') }}
+          key: vcpkg-windows-java-${{ hashFiles('ports/**', 'triplets/**', 'PagmoNet4j/pagmoWrapper/CMakeLists.txt', 'scripts/build-native.ps1', 'PagmoNet4j/scripts/build-native.ps1') }}
           restore-keys: vcpkg-windows-java-
 
       - name: Build native
@@ -118,7 +118,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/vcpkg/installed
-          key: vcpkg-linux-java-${{ hashFiles('ports/**', 'triplets/**', 'PagmoNet4j/pagmoWrapper/CMakeLists.txt', 'scripts/build-native.ps1') }}
+          key: vcpkg-linux-java-${{ hashFiles('ports/**', 'triplets/**', 'PagmoNet4j/pagmoWrapper/CMakeLists.txt', 'scripts/build-native.ps1', 'PagmoNet4j/scripts/build-native.ps1') }}
           restore-keys: vcpkg-linux-java-
 
       - name: Build native
@@ -176,7 +176,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/vcpkg/installed
-          key: vcpkg-macos-java-${{ hashFiles('ports/**', 'triplets/**', 'PagmoNet4j/pagmoWrapper/CMakeLists.txt', 'scripts/build-native.ps1') }}
+          key: vcpkg-macos-java-${{ hashFiles('ports/**', 'triplets/**', 'PagmoNet4j/pagmoWrapper/CMakeLists.txt', 'scripts/build-native.ps1', 'PagmoNet4j/scripts/build-native.ps1') }}
           restore-keys: vcpkg-macos-java-
 
       - name: Build native

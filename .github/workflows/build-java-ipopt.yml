@@ -75,7 +75,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: C:/vcpkg/installed
-          key: vcpkg-windows-java-ipopt-v3-${{ hashFiles('ports/**', 'triplets/**', 'PagmoNet4j/pagmoWrapper/CMakeLists.txt', 'scripts/build-native.ps1') }}
+          key: vcpkg-windows-java-ipopt-v3-${{ hashFiles('ports/**', 'triplets/**', 'PagmoNet4j/pagmoWrapper/CMakeLists.txt', 'scripts/build-native.ps1', 'PagmoNet4j/scripts/build-native.ps1') }}
           restore-keys: vcpkg-windows-java-ipopt-v3-
 
       - uses: mamba-org/setup-micromamba@v2
@@ -139,7 +139,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/vcpkg/installed
-          key: vcpkg-linux-java-ipopt-v3-${{ hashFiles('ports/**', 'triplets/**', 'PagmoNet4j/pagmoWrapper/CMakeLists.txt', 'scripts/build-native.ps1') }}
+          key: vcpkg-linux-java-ipopt-v3-${{ hashFiles('ports/**', 'triplets/**', 'PagmoNet4j/pagmoWrapper/CMakeLists.txt', 'scripts/build-native.ps1', 'PagmoNet4j/scripts/build-native.ps1') }}
           restore-keys: vcpkg-linux-java-ipopt-v3-
 
       - uses: mamba-org/setup-micromamba@v2
@@ -209,7 +209,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/vcpkg/installed
-          key: vcpkg-macos-java-ipopt-v3-${{ hashFiles('ports/**', 'triplets/**', 'PagmoNet4j/pagmoWrapper/CMakeLists.txt', 'scripts/build-native.ps1') }}
+          key: vcpkg-macos-java-ipopt-v3-${{ hashFiles('ports/**', 'triplets/**', 'PagmoNet4j/pagmoWrapper/CMakeLists.txt', 'scripts/build-native.ps1', 'PagmoNet4j/scripts/build-native.ps1') }}
           restore-keys: vcpkg-macos-java-ipopt-v3-
 
       - name: Build base native (no IPOPT link; libipopt is dlopen'd at test time)
