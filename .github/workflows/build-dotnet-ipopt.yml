@@ -128,8 +128,13 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake build-essential swig curl zip unzip tar \
-            autoconf autoconf-archive automake libtool libmumps-seq-dev
+            autoconf autoconf-archive automake libtool libmumps-seq-dev \
+            coinor-libipopt-dev
 
+      # coinor-libipopt-dev puts libipopt.so on the default loader path, so the base's
+      # deferred_ipopt dlopen resolves it at test time (this job proves the base + a system
+      # libipopt work; the old superset static-linked IPOPT into the wrapper, which no longer
+      # happens). This also exercises the bring-your-own-IPOPT path.
       - name: Regenerate C# bindings (ipopt is unconditional; loaded at runtime)
         run: pwsh pagmo.NET/createSwigWrappersAndPlaceThem.ps1
 

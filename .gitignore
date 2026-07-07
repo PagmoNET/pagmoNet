@@ -23,3 +23,15 @@ swig/generated/
 *.tlog
 *.so
 *.dylib
+
+# Native dependency-closure staging (bundle-native-deps.ps1) + release payload staging
+staged/
+staged-natives/
+staged-runtimes/
+
+# Clean-room verification: local maven repos + JVM crash dumps
+cleanroom-repo/
+hs_err_pid*.log
+
+# Gradle
+.gradle/
