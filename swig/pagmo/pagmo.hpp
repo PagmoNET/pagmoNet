@@ -93,9 +93,10 @@ see https://www.gnu.org/licenses/. */
 #include <pagmo/algorithms/xnes.hpp>
 #endif
 
-#if defined(PAGMO_WITH_IPOPT)
-#include <pagmo/algorithms/ipopt.hpp>
-#endif
+// pagmo's real <pagmo/algorithms/ipopt.hpp> is deliberately NOT included: the `ipopt` algorithm
+// is pagmoNet::deferred_ipopt (SWIG-aliased to pagmo::ipopt), loaded at runtime via dlopen. Pulling
+// in pagmo's own class pagmo::ipopt collides with that alias and could link EPL libipopt into the
+// MPL-clean base if the installed pagmo happens to have the IPOPT feature.
 
 #if defined(PAGMO_WITH_NLOPT)
 #include <pagmo/algorithms/nlopt.hpp>

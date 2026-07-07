@@ -22,9 +22,11 @@
 #if defined(PAGMO_WITH_NLOPT)
 #include "pagmo/algorithms/nlopt.hpp"
 #endif
-#if defined(PAGMO_WITH_IPOPT)
-#include "pagmo/algorithms/ipopt.hpp"
-#endif
+// NOTE: pagmo's real <pagmo/algorithms/ipopt.hpp> is deliberately NOT included. Under the
+// deferred-load model the `ipopt` algorithm is pagmoNet::deferred_ipopt (SWIG-aliased to the name
+// pagmo::ipopt); pulling in pagmo's own class pagmo::ipopt would both collide with that alias and,
+// if the installed pagmo was built with IPOPT, risk linking EPL libipopt into the MPL-clean base.
+// The ipopt log is projected from deferred_ipopt::get_log() directly (see ipopt.i's %extend).
 #endif // SWIG
 
 namespace pagmoWrap {
@@ -279,18 +281,9 @@ inline std::vector<NloptLogEntry> Nlopt_GetLogEntries(const pagmo::nlopt &algo)
 }
 #endif
 
-#if defined(PAGMO_WITH_IPOPT)
-inline std::vector<IpoptLogEntry> Ipopt_GetLogEntries(const pagmo::ipopt &algo)
-{
-    std::vector<IpoptLogEntry> entries;
-    const auto &log = algo.get_log();
-    entries.reserve(log.size());
-    for (const auto &line : log) {
-        entries.push_back({std::get<0>(line), std::get<1>(line), static_cast<unsigned long long>(std::get<2>(line)), std::get<3>(line), std::get<4>(line)});
-    }
-    return entries;
-}
-#endif
+// (No Ipopt_GetLogEntries here: the ipopt log is projected from deferred_ipopt::get_log()
+// inline in ipopt.i's %extend get_log_entry, so this projection helper -- which would need
+// pagmo's real class pagmo::ipopt -- is intentionally absent. See the include note above.)
 
 #if defined(PAGMO_WITH_SNOPT7)
 #include "pagmo/algorithms/snopt7.hpp"

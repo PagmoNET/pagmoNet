@@ -4,6 +4,30 @@ Active journal for cross-session / cross-device continuity. Newest session on to
 
 ---
 
+## CI result 2026-07-06 — Linux `build-dotnet-ipopt` still red; robust code fix
+
+After the v4 cache bump, Windows + macOS `build-dotnet-ipopt` went GREEN, but **Linux still failed**
+with the same `pagmo::ipopt` redefinition (installed pagmo had `PAGMO_WITH_IPOPT` — the log shows
+`Requested IPOPT components: header`). The `ports/pagmo2` port is correct (ipopt is NOT a default
+feature; the portfile even sets `CMAKE_DISABLE_FIND_PACKAGE_IPOPT=ON` when ipopt isn't requested, to
+stop pagmo auto-detecting a *system* IPOPT on Linux runners). So Linux's pagmo shouldn't have ipopt
+— the v4 bump apparently didn't fully bust its cache / a system IPOPT slipped the guard.
+
+**Stopped playing cache whack-a-mole and fixed it deterministically in our code.** Two of our headers
+pulled in pagmo's real `<pagmo/algorithms/ipopt.hpp>` under `#if defined(PAGMO_WITH_IPOPT)`
+(`native/algorithm_log_projections_more.h` + `swig/pagmo/pagmo.hpp`). On the normal `pagmo[nlopt]`
+build those are compiled out (why Win/Mac pass), but when pagmo has ipopt they declare `class
+pagmo::ipopt`, colliding with the SWIG alias `using ipopt = deferred_ipopt` **and** risking linking
+EPL libipopt into the MPL-clean base. Both were **dead under deferred-load**: the ipopt log is
+projected from `deferred_ipopt::get_log()` inline in `ipopt.i`'s `%extend`, and `Ipopt_GetLogEntries`
+(the only consumer of the include) was unreferenced. **Removed both includes + `Ipopt_GetLogEntries`;
+kept the `IpoptLogEntry` struct** (still used by the `%extend`). Now nothing includes pagmo's real
+ipopt.hpp, so the collision is impossible regardless of the installed pagmo's features, and the base
+can't accidentally link IPOPT. Compile-checked locally (native rebuilt clean). Kept the v4 cache
+bump as belt-and-suspenders. Needs a push to confirm Linux.
+
+---
+
 ## CI result 2026-07-05 — `build-dotnet-ipopt` red (stale vcpkg cache), fixed
 
 First push after the rework: `pagmo.NET`, `PagmoNet4j`, `PagmoNet4j.ipopt` GREEN;
