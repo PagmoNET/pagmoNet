@@ -8,10 +8,44 @@
 // missing, the process fails with a DllNotFound/dyld error instead of a green build —
 // which is the entire point of this gate.
 //
-// Exit codes: 0 = solved; 1 = ran but did not converge; 2 = IPOPT not available.
+// Exit codes: 0 = solved (or negative control passed); 1 = ran but did not converge;
+// 2 = IPOPT not available (positive mode); 3 = negative control failed.
+//
+// Set PAGMONET_CLEANROOM_EXPECT=absent to run the NEGATIVE CONTROL: with only the base Pagmo.NET
+// package installed (no companion, no system libipopt), IPOPT must NOT be available. This proves the
+// clean room is genuinely clean, so a positive PASS can't be a false pass from an ambient/leaked
+// libipopt. Default (present) runs the positive base+companion solve.
 
 using System;
 using pagmo;
+
+if (string.Equals(Environment.GetEnvironmentVariable("PAGMONET_CLEANROOM_EXPECT"), "absent",
+                  StringComparison.OrdinalIgnoreCase))
+{
+    if (OptionalSolverAvailability.IsIpoptAvailable)
+    {
+        Console.Error.WriteLine("FAIL (negative control): IPOPT is available WITHOUT the companion package "
+            + "-- the clean room is NOT clean (an ambient/system libipopt leaked in).");
+        return 3;
+    }
+    // The ipopt algorithm ships in the base; constructing it is fine, but evolve() must throw the
+    // helpful "install the companion" error rather than silently no-op.
+    try
+    {
+        using var probN = new QuadraticProblem();
+        using var algoN = new ipopt();
+        using var popN = new population(probN, 1u, 42u);
+        using var _ = algoN.evolve(popN);
+        Console.Error.WriteLine("FAIL (negative control): ipopt.evolve() succeeded without a libipopt present.");
+        return 3;
+    }
+    catch (Exception e)
+    {
+        Console.WriteLine("PASS (negative control): IPOPT correctly unavailable with the base alone; "
+            + "evolve threw: " + e.Message.Split('\n')[0]);
+        return 0;
+    }
+}
 
 if (!OptionalSolverAvailability.IsIpoptAvailable)
 {

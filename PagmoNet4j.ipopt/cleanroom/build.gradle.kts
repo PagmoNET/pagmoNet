@@ -19,8 +19,17 @@ val pagmoIpoptVersion: String =
     (findProperty("pagmoIpoptVersion") as String?)
         ?: error("Set -PpagmoIpoptVersion=<version> (the published pagmonet4j-ipopt version to test).")
 
+// -PpagmoBaseOnly=true depends on the BASE pagmonet4j alone (no companion) for the negative-control
+// run: with PAGMONET_CLEANROOM_EXPECT=absent the app then asserts IPOPT is NOT available, proving the
+// clean room is genuinely clean. The default depends on the companion (positive base+companion solve).
+val pagmoBaseOnly: Boolean = (findProperty("pagmoBaseOnly") as String?) == "true"
+
 dependencies {
-    implementation("io.github.samthegliderpilot:pagmonet4j-ipopt:$pagmoIpoptVersion")
+    if (pagmoBaseOnly) {
+        implementation("io.github.samthegliderpilot:pagmonet4j:$pagmoIpoptVersion")
+    } else {
+        implementation("io.github.samthegliderpilot:pagmonet4j-ipopt:$pagmoIpoptVersion")
+    }
 }
 
 application {

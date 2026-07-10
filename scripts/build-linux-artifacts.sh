@@ -100,6 +100,10 @@ cat > "$CONS/nuget.config" <<EOF
 EOF
 # Clear the cached same-version packages so we test the freshly-packed nupkgs, not stale copies.
 rm -rf "$HOME/.nuget/packages/pagmo.net" "$HOME/.nuget/packages/pagmo.net.ipopt"
+echo "   -- negative control: base ONLY, IPOPT must be UNavailable (proves the room is clean) --"
+( cd "$CONS" && dotnet add CleanRoom.csproj package Pagmo.NET --version "$VER" \
+  && PAGMONET_CLEANROOM_EXPECT=absent dotnet run --project CleanRoom.csproj -c Release -r linux-x64 --self-contained false )
+echo "   -- positive: add companion, IPOPT solve must succeed --"
 ( cd "$CONS" && dotnet add CleanRoom.csproj package Pagmo.NET.Ipopt --version "$VER" \
   && dotnet run --project CleanRoom.csproj -c Release -r linux-x64 --self-contained false )
 
@@ -115,6 +119,10 @@ cp -r PagmoNet4j.ipopt/build/localrepo/* "$REPO_M/"
 rm -rf "$HOME/.m2/repository/io/github/samthegliderpilot" \
        "$HOME/.gradle/caches/modules-2/files-2.1/io.github.samthegliderpilot" \
        "$HOME/.gradle/caches/modules-2/metadata-"*/descriptors/io.github.samthegliderpilot 2>/dev/null || true
+echo "   -- negative control: base ONLY, IPOPT must be UNavailable --"
+PAGMONET_CLEANROOM_EXPECT=absent ./PagmoNet4j.ipopt/gradlew -p PagmoNet4j.ipopt/cleanroom run \
+  -PpagmoIpoptVersion="$VER" -PlocalRepo="$REPO_M" -PpagmoBaseOnly=true --console=plain
+echo "   -- positive: companion, IPOPT solve must succeed --"
 ./PagmoNet4j.ipopt/gradlew -p PagmoNet4j.ipopt/cleanroom run -PpagmoIpoptVersion="$VER" -PlocalRepo="$REPO_M" --console=plain
 
 echo ""

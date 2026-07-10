@@ -270,7 +270,19 @@ jobs:
           </configuration>
           EOF
 
-      - name: Add package + run IPOPT solve (offline — no NuGet.org, no conda, no LD/DYLD hints)
+      # Negative control FIRST: with only the base package (no companion, no system libipopt), IPOPT
+      # must be UNavailable. This proves the runner is genuinely clean, so the positive PASS below
+      # can't be a false pass from an ambient/leaked libipopt.
+      - name: Negative control — base only, IPOPT must be unavailable
+        working-directory: pagmo.NET.ipopt/cleanroom
+        shell: bash
+        env:
+          PAGMONET_CLEANROOM_EXPECT: absent
+        run: |
+          dotnet add CleanRoom.csproj package Pagmo.NET --version "${{ needs.meta.outputs.version }}"
+          dotnet run --project CleanRoom.csproj -c Release -r ${{ matrix.rid }} --self-contained false
+
+      - name: Add companion + run IPOPT solve (offline — no NuGet.org, no conda, no LD/DYLD hints)
         working-directory: pagmo.NET.ipopt/cleanroom
         shell: bash
         run: |

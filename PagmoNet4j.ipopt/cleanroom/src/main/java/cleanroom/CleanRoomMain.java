@@ -11,8 +11,13 @@ import io.github.samthegliderpilot.pagmonet4j.problems.*;
  * bundles its own IPOPT-enabled native plus the full dynamic dependency closure and
  * loads it unaided. Mirrors {@code IpoptSolverTest.mumpsLinearSolverConverges}.
  *
- * <p>Exit codes (consumed by the CI gate via JavaExec): 0 = solved; 1 = ran but did not
- * converge; 2 = IPOPT not present in the artifact.
+ * <p>Exit codes (consumed by the CI gate via JavaExec): 0 = solved (or negative control passed);
+ * 1 = ran but did not converge; 2 = IPOPT not present in the artifact; 3 = negative control failed.
+ *
+ * <p>Set {@code PAGMONET_CLEANROOM_EXPECT=absent} for the NEGATIVE CONTROL: with only the base
+ * pagmonet4j on the classpath (no companion, no system libipopt), IPOPT must NOT be available. This
+ * proves the clean room is genuinely clean, so a positive PASS can't be a false pass from an
+ * ambient/leaked libipopt.
  */
 public final class CleanRoomMain {
 
@@ -39,6 +44,27 @@ public final class CleanRoomMain {
     }
 
     public static void main(String[] args) {
+        if ("absent".equalsIgnoreCase(System.getenv("PAGMONET_CLEANROOM_EXPECT"))) {
+            if (OptionalSolverAvailability.isIpoptAvailable()) {
+                System.err.println("CLEAN-ROOM FAIL (negative control): IPOPT is available WITHOUT the "
+                    + "companion -- the clean room is NOT clean (an ambient/system libipopt leaked in).");
+                System.exit(3);
+            }
+            // The ipopt algorithm ships in the base; evolve() must throw the "install companion" error.
+            try (QuadraticProblem prob = new QuadraticProblem();
+                 ipopt algo = new ipopt();
+                 population pop = new population(prob, 1L, 42L);
+                 population evolved = algo.evolve(pop)) {
+                System.err.println("CLEAN-ROOM FAIL (negative control): ipopt.evolve() succeeded without a libipopt.");
+                System.exit(3);
+            } catch (RuntimeException e) {
+                System.out.println("CLEAN-ROOM PASS (negative control): IPOPT correctly unavailable with the "
+                    + "base alone; evolve threw: " + e.getMessage().split("\n")[0]);
+                System.exit(0);
+            }
+            return;
+        }
+
         if (!OptionalSolverAvailability.isIpoptAvailable()) {
             System.err.println("CLEAN-ROOM FAIL: IPOPT is not available in the published artifact.");
             System.exit(2);

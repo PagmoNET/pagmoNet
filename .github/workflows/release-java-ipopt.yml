@@ -255,11 +255,22 @@ jobs:
           name: base-maven-repo
           path: localrepo
 
+      # Negative control FIRST: with only the base pagmonet4j on the classpath (no companion, no
+      # system libipopt), IPOPT must be UNavailable -- proves the runner is genuinely clean, so the
+      # positive PASS below can't be a false pass from an ambient/leaked libipopt.
+      - name: Negative control — base only, IPOPT must be unavailable
+        shell: bash
+        env:
+          PAGMONET_CLEANROOM_EXPECT: absent
+        run: |
+          chmod +x PagmoNet4j.ipopt/gradlew
+          ./PagmoNet4j.ipopt/gradlew --no-daemon -p PagmoNet4j.ipopt/cleanroom run \
+            -PpagmoIpoptVersion=${{ needs.meta.outputs.version }} -PpagmoBaseOnly=true
+
       - name: Resolve pagmonet4j-ipopt + base, run IPOPT solve (offline — no GitHub Packages, no conda)
         shell: bash
         run: |
-          chmod +x gradlew
-          ./gradlew --no-daemon -p PagmoNet4j.ipopt/cleanroom run \
+          ./PagmoNet4j.ipopt/gradlew --no-daemon -p PagmoNet4j.ipopt/cleanroom run \
             -PpagmoIpoptVersion=${{ needs.meta.outputs.version }}
 
   # ── Publish: only after the clean-room gate passes ────────────────────────
