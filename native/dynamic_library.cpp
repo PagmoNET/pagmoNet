@@ -1,4 +1,9 @@
 /* dynamic_library.cpp -- MPL-2.0 (original work). See dynamic_library.hpp. */
+// dladdr() (used to locate this shared library on Unix) is a GNU extension guarded by __USE_GNU;
+// _GNU_SOURCE must be defined before the first system header. Harmless on Windows/macOS.
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
 #include "dynamic_library.hpp"
 
 #include <cstdlib>
@@ -46,6 +51,46 @@ void os_unload(void *handle)
 }
 #endif
 
+// Directory containing THIS shared library (the wrapper). We resolve solver candidates relative to
+// it because the OS bare-name search does not include the loading module's own directory on Linux
+// (dlopen) the way the app-dir search effectively does on Windows -- so an app-local libipopt that
+// the companion package drops next to the wrapper is otherwise invisible.
+std::string self_dir()
+{
+#if defined(_WIN32)
+    HMODULE hmod = nullptr;
+    if (!::GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                              reinterpret_cast<LPCSTR>(&os_load), &hmod)) {
+        return {};
+    }
+    char buf[MAX_PATH];
+    const DWORD n = ::GetModuleFileNameA(hmod, buf, MAX_PATH);
+    if (n == 0 || n >= MAX_PATH) {
+        return {};
+    }
+    std::string path(buf, n);
+    const auto slash = path.find_last_of("\\/");
+    return slash == std::string::npos ? std::string() : path.substr(0, slash);
+#else
+    Dl_info info{};
+    if (::dladdr(reinterpret_cast<void *>(&os_load), &info) == 0 || info.dli_fname == nullptr) {
+        return {};
+    }
+    std::string path(info.dli_fname);
+    const auto slash = path.find_last_of('/');
+    return slash == std::string::npos ? std::string() : path.substr(0, slash);
+#endif
+}
+
+constexpr char path_sep()
+{
+#if defined(_WIN32)
+    return '\\';
+#else
+    return '/';
+#endif
+}
+
 std::string read_env(const char *name)
 {
 #if defined(_WIN32)
@@ -84,7 +129,24 @@ dynamic_library::dynamic_library(const char *override_env_var, std::initializer_
         }
     }
 
-    // 2) Candidate names via the OS loader search path.
+    // 2) Candidate names co-located with this wrapper library (where the companion package drops
+    // the solver). Explicit because dlopen does not search the caller's own directory on Linux.
+    {
+        const std::string dir = self_dir();
+        if (!dir.empty()) {
+            for (const char *name : candidate_names) {
+                const std::string full = dir + path_sep() + name;
+                m_handle = os_load(full.c_str());
+                if (m_handle != nullptr) {
+                    m_loaded = full;
+                    return;
+                }
+                tried += "\n  - " + full;
+            }
+        }
+    }
+
+    // 3) Candidate names via the OS loader search path (system install / LD_LIBRARY_PATH / RPATH).
     for (const char *name : candidate_names) {
         m_handle = os_load(name);
         if (m_handle != nullptr) {

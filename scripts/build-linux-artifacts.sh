@@ -34,9 +34,16 @@ tar -C "$SRC" \
   -cf - . | tar -C "$BUILD" -xf -
 cd "$BUILD"
 
-echo "==> [0/6] conda libipopt closure (OpenBLAS) for the companion payloads"
-[ -d "$HOME/ipopt-env" ] || micromamba create -c conda-forge -p "$HOME/ipopt-env" ipopt nomkl -y
-IPOPT_LIB="$HOME/ipopt-env/lib"
+# gradlew ships from a Windows checkout with CRLF line endings; its `#!/usr/bin/env sh` shebang then
+# fails under Linux ("env: 'sh\r': No such file or directory"). Strip the carriage returns.
+find . -name gradlew -exec sed -i 's/\r$//' {} +
+
+echo "==> [0/6] conda libipopt closure (OpenBLAS, nomkl) for the companion payloads"
+# Use a DEDICATED env name so a stale MKL ~/ipopt-env from an earlier run can't be reused: MKL
+# bloats the closure to ~570 MB (216 MB packed) vs OpenBLAS ~42 MB. Only this nomkl code ever
+# creates ipopt-ob-env, so its presence guarantees OpenBLAS.
+[ -d "$HOME/ipopt-ob-env" ] || micromamba create -c conda-forge -p "$HOME/ipopt-ob-env" ipopt nomkl -y
+IPOPT_LIB="$HOME/ipopt-ob-env/lib"
 
 # Force a CLEAN pagmo (no ipopt feature) so the base .so links zero IPOPT and stays MPL-clean.
 # The portfile disables find_package(IPOPT) when ipopt isn't a requested feature.
@@ -91,6 +98,8 @@ cat > "$CONS/nuget.config" <<EOF
   <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
 </packageSources></configuration>
 EOF
+# Clear the cached same-version packages so we test the freshly-packed nupkgs, not stale copies.
+rm -rf "$HOME/.nuget/packages/pagmo.net" "$HOME/.nuget/packages/pagmo.net.ipopt"
 ( cd "$CONS" && dotnet add CleanRoom.csproj package Pagmo.NET.Ipopt --version "$VER" \
   && dotnet run --project CleanRoom.csproj -c Release -r linux-x64 --self-contained false )
 
@@ -101,6 +110,11 @@ REPO_M=/tmp/java-repo; rm -rf "$REPO_M"; mkdir -p "$REPO_M"
 ( cd PagmoNet4j.ipopt && ./gradlew publishMavenPublicationToBuildLocalRepository -x test -Pversion="$VER" --console=plain )
 cp -r PagmoNet4j/core/build/localrepo/* "$REPO_M/"
 cp -r PagmoNet4j.ipopt/build/localrepo/* "$REPO_M/"
+# Drop cached same-version artifacts (mavenLocal + gradle module cache) so the clean-room resolves
+# the freshly-built jars, not stale copies.
+rm -rf "$HOME/.m2/repository/io/github/samthegliderpilot" \
+       "$HOME/.gradle/caches/modules-2/files-2.1/io.github.samthegliderpilot" \
+       "$HOME/.gradle/caches/modules-2/metadata-"*/descriptors/io.github.samthegliderpilot 2>/dev/null || true
 ./PagmoNet4j.ipopt/gradlew -p PagmoNet4j.ipopt/cleanroom run -PpagmoIpoptVersion="$VER" -PlocalRepo="$REPO_M" --console=plain
 
 echo ""

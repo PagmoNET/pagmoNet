@@ -4,6 +4,41 @@ Active journal for cross-session / cross-device continuity. Newest session on to
 
 ---
 
+## 2026-07-09 — Deferred-loader bug (app-local libipopt) + Linux clean-box packages
+
+Clean-box (WSL) testing caught a real bug the CI didn't: the offline C# clean-room reported "IPOPT
+reports unavailable" on Linux even though `libipopt.so` was co-located with the wrapper and loaded
+fine standalone.
+
+**Root cause:** `dynamic_library.cpp` only did a bare-name `dlopen("libipopt.so")` / `LoadLibrary`,
+relying on the OS search path. Windows' search includes the app dir (so it worked); CI worked only
+because `coinor-libipopt-dev` put libipopt on the *system* path. But **Linux `dlopen` does NOT
+search the caller's own directory**, so an app-local libipopt (dropped by the companion, offline) is
+invisible. The plan's "search the wrapper's own dir" was never implemented.
+
+**Fix (native, shared by C# + Java):** `dynamic_library.cpp` now resolves candidates relative to the
+wrapper's own directory FIRST (`dladdr` on Unix — needs `_GNU_SOURCE`; `GetModuleHandleEx` on
+Windows), then falls back to the OS search path. Validated on Linux: `pagmonet_ipopt_available()` and
+`pagmonet4j_has_ipopt_support()` both return true with libipopt co-located only (not on any path),
+and the delivered Linux C# nupkg runs a full solve (`PASS f=4.2E-24`). **This also fixes the
+Linux/macOS release clean-rooms**, which would otherwise have failed the same way. Needs push.
+
+**WSL Linux build (`scripts/build-linux-artifacts.sh`) — fixes made:** build on ext4 not `/mnt/c`
+(cmake `configure_file` EPERM on drvfs); pack via `-p:PackageOutputPath` not `-o` (SDK
+mis-translates `-o` to a bare MSBuild arg); strip CRLF from `gradlew` (Windows checkout → `env:
+sh\r`); dedicated `ipopt-ob-env` conda env so `nomkl`/OpenBLAS can't be shadowed by a stale MKL env;
+clear NuGet/.m2/gradle caches before the same-version verifications.
+
+**Confirmed OK:** `dotnet run` DOES propagate a non-zero app exit code (tested 2→2, incl.
+`-r linux-x64 --self-contained false`) — the clean-room gate is reliable.
+
+**Known follow-up (release, not blocking):** the Linux companion closure is ~157 MB / 216 MB packed
+(OpenBLAS, not MKL — confirmed) because `bundle-native-deps.ps1` copy-all over-collects on Linux
+(conda `lib/` has many transitive `.so`; Windows `Library\bin` was minimal). Under NuGet's 250 MB
+limit but bloated + tight — scope the Linux closure to IPOPT's actual dep graph before release.
+
+---
+
 ## 2026-07-06/07 — Java Windows jar crash: root cause + static-CRT fix
 
 **Symptom:** locally-built Windows `pagmonet4j` jar crashes the JVM with `EXCEPTION_ACCESS_VIOLATION`
