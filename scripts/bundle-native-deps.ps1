@@ -64,6 +64,10 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Start from a clean output dir so a stale closure from a previous run can't leak in (e.g. an old
+# copy-all payload left behind would bloat the package back up). CI runners are fresh; this matters
+# for local re-runs and any caller that reuses a staging directory.
+if (Test-Path $OutputDir) { Remove-Item -Recurse -Force $OutputDir }
 New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
 $OutputDir = (Resolve-Path $OutputDir).Path
 
@@ -89,38 +93,50 @@ if ($IsLinux) {
     if (-not (Get-Command patchelf -ErrorAction SilentlyContinue)) {
         throw "patchelf is required on Linux to set RPATH=`$ORIGIN on the bundled closure; install it (apt-get install -y patchelf)."
     }
-    $count = 0
+    # Locate the IPOPT library the deferred loader dlopen's.
+    $ipopt = $null
     foreach ($dir in $searchDirs) {
-        Get-ChildItem -Path $dir -File -ErrorAction SilentlyContinue |
-            Where-Object { $_.Name -match '\.so($|\.)' } | ForEach-Object {
-                Copy-Lib $_
-                $count++
-            }
+        foreach ($n in @('libipopt.so.3', 'libipopt.so.1', 'libipopt.so')) {
+            $c = Join-Path $dir $n
+            if (Test-Path $c) { $ipopt = Get-Item $c; break }
+        }
+        if ($ipopt) { break }
     }
+    if (-not $ipopt) { throw "libipopt.so not found in any -SearchDir." }
+
+    # `ldd` lists the FULL transitive closure; keep only entries resolving inside a -SearchDir. That
+    # is IPOPT's real runtime dependency closure -- far smaller than copying the whole conda env,
+    # which pulls in unrelated libraries (icu, xml2, ...) IPOPT never touches. On conda-forge nomkl,
+    # liblapack.so.3 is a symlink to the OpenBLAS implementation, so BLAS/LAPACK IS captured here
+    # (it is NOT runtime-dlopen'd the way MKL is on Windows).
+    $wanted = @{}
+    foreach ($line in (& ldd $ipopt.FullName 2>$null)) {
+        if ($line -match '=>\s*(/\S+)') {
+            $resolved = $matches[1]
+            if (Test-Path $resolved) {
+                foreach ($dir in $searchDirs) {
+                    if ($resolved.StartsWith($dir, [System.StringComparison]::Ordinal)) {
+                        $wanted[[System.IO.Path]::GetFileName($resolved)] = $resolved
+                        break
+                    }
+                }
+            }
+        }
+    }
+
+    Copy-Lib $ipopt
+    foreach ($name in $wanted.Keys) { Copy-Lib (Get-Item $wanted[$name]) }
+
     # Point every bundled ELF at its own directory so siblings resolve with no LD_LIBRARY_PATH.
     foreach ($f in Get-ChildItem -Path $OutputDir -File) {
         & patchelf --set-rpath '$ORIGIN' $f.FullName 2>$null
     }
-    Write-Host "Linux: staged $count shared libraries from the IPOPT env into $OutputDir (RPATH=`$ORIGIN)."
+    Write-Host "Linux: staged $((Get-ChildItem $OutputDir -File).Count) libs (IPOPT dependency closure) into $OutputDir (RPATH=`$ORIGIN)."
     return
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
 if ($IsMacOS) {
-    $count = 0
-    foreach ($dir in $searchDirs) {
-        Get-ChildItem -Path $dir -File -ErrorAction SilentlyContinue |
-            Where-Object { $_.Name -match '\.dylib$' } | ForEach-Object {
-                Copy-Lib $_
-                $count++
-            }
-    }
-
-    # The set of basenames we bundled -- any reference to one of these is redirected to
-    # @loader_path so it resolves from the package directory.
-    $bundled = @{}
-    foreach ($f in Get-ChildItem -Path $OutputDir -File) { $bundled[$f.Name] = $true }
-
     function Get-OtoolDeps([string]$path) {
         $lines = & otool -L $path
         $deps = @()
@@ -131,7 +147,49 @@ if ($IsMacOS) {
         }
         return $deps
     }
+    # Resolve an install-name reference (@rpath/@loader_path/absolute) to a file inside a search dir,
+    # by basename. Returns $null for system dylibs (/usr/lib, /System), which are never in a SearchDir.
+    function Resolve-InSearch([string]$ref) {
+        $base = [System.IO.Path]::GetFileName($ref)
+        foreach ($dir in $searchDirs) {
+            $c = Join-Path $dir $base
+            if (Test-Path $c) { return (Get-Item $c) }
+        }
+        return $null
+    }
 
+    # Locate the IPOPT dylib the deferred loader dlopen's.
+    $ipopt = $null
+    foreach ($dir in $searchDirs) {
+        foreach ($n in @('libipopt.3.dylib', 'libipopt.1.dylib', 'libipopt.dylib')) {
+            $c = Join-Path $dir $n
+            if (Test-Path $c) { $ipopt = Get-Item $c; break }
+        }
+        if ($ipopt) { break }
+    }
+    if (-not $ipopt) { throw "libipopt.dylib not found in any -SearchDir." }
+
+    # BFS the dependency closure from libipopt -- otool -L is direct-only (unlike Linux ldd, which is
+    # already transitive), so recurse. Copy every dep resolving into a SearchDir; this is IPOPT's real
+    # runtime closure, far smaller than copying the whole conda env. conda-forge nomkl symlinks
+    # liblapack.dylib to the OpenBLAS implementation, so BLAS is captured here (not runtime-dlopen'd).
+    $bundled = @{}
+    $queue = [System.Collections.Queue]::new()
+    Copy-Lib $ipopt
+    $bundled[$ipopt.Name] = $true
+    $queue.Enqueue($ipopt.FullName)
+    while ($queue.Count -gt 0) {
+        foreach ($ref in (Get-OtoolDeps $queue.Dequeue())) {
+            $item = Resolve-InSearch $ref
+            if (-not $item -or $bundled.ContainsKey($item.Name)) { continue }
+            Copy-Lib $item
+            $bundled[$item.Name] = $true
+            $queue.Enqueue($item.FullName)
+        }
+    }
+
+    # Rewrite install names so everything resolves via @loader_path (its own id, and every reference
+    # to a bundled sibling), then re-sign ad-hoc (rewriting invalidates signatures).
     foreach ($f in Get-ChildItem -Path $OutputDir -File) {
         $path = $f.FullName
         & install_name_tool -id "@loader_path/$($f.Name)" $path 2>$null
@@ -142,13 +200,12 @@ if ($IsMacOS) {
             }
         }
     }
-
     if (-not $SkipCodeSign) {
         foreach ($f in Get-ChildItem -Path $OutputDir -File) {
             & codesign --force --sign - $f.FullName
         }
     }
-    Write-Host "macOS: staged $count dylibs into $OutputDir (@loader_path, ad-hoc signed)."
+    Write-Host "macOS: staged $($bundled.Count) dylibs (IPOPT dependency closure) into $OutputDir (@loader_path, ad-hoc signed)."
     return
 }
 

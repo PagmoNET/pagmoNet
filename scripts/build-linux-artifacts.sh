@@ -38,6 +38,11 @@ cd "$BUILD"
 # fails under Linux ("env: 'sh\r': No such file or directory"). Strip the carriage returns.
 find . -name gradlew -exec sed -i 's/\r$//' {} +
 
+# Scrub any staging / build-output dirs the source copy may have carried in (e.g. a stale
+# staged-natives/win-x64 from a Windows build would otherwise get bundled into the Linux jar).
+find . -depth -type d \( -name staged-natives -o -name staged-runtimes -o -name staged -o -name cleanroom-repo \) \
+  -exec rm -rf {} + 2>/dev/null || true
+
 echo "==> [0/6] conda libipopt closure (OpenBLAS, nomkl) for the companion payloads"
 # Use a DEDICATED env name so a stale MKL ~/ipopt-env from an earlier run can't be reused: MKL
 # bloats the closure to ~570 MB (216 MB packed) vs OpenBLAS ~42 MB. Only this nomkl code ever
