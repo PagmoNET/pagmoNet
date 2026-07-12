@@ -41,6 +41,9 @@ internal static class Program
             case "cloning":
                 RunCloneableProblemsScenario(verbose);
                 break;
+            case "ipopt":
+                RunIpoptScenario(verbose);
+                break;
             case "all":
                 RunSingleIslandBaseline(verbose);
                 Console.WriteLine();
@@ -51,10 +54,12 @@ internal static class Program
                 RunCloneableProblemsScenario(verbose);
                 Console.WriteLine();
                 RunOrbitalManeuverOptimization(verbose);
+                Console.WriteLine();
+                RunIpoptScenario(verbose);
                 break;
             default:
                 Console.WriteLine($"Unknown scenario '{scenario}'.");
-                Console.WriteLine("Use one of: single, archipelago, policies, maneuver, cloning, all");
+                Console.WriteLine("Use one of: single, archipelago, policies, maneuver, cloning, ipopt, all");
                 Console.WriteLine("Add --verbose (or -v) to print algorithm logs after each scenario.");
                 break;
         }
@@ -376,7 +381,56 @@ internal static class Program
         }
     }
 
+    // Optional-solver pattern: use IPOPT if its native runtime is present, else skip gracefully.
+    // IPOPT (a gradient-based interior-point solver) is the `ipopt` algorithm in the base package;
+    // the Pagmo.NET.Ipopt companion package -- or a system libipopt, or the PAGMONET_IPOPT_LIBRARY
+    // override -- supplies the native runtime it loads at startup. A base-only build cleanly skips.
+    private static void RunIpoptScenario(bool verbose)
+    {
+        Console.WriteLine("Scenario: IPOPT gradient-based local solve (optional solver)");
+
+        if (!OptionalSolverAvailability.IsIpoptAvailable)
+        {
+            Console.WriteLine("  IPOPT is not available in this build.");
+            Console.WriteLine("  Add the Pagmo.NET.Ipopt companion package (or set PAGMONET_IPOPT_LIBRARY) to enable it.");
+            Console.WriteLine("  Skipping -- optional native solvers should degrade gracefully, not crash.");
+            return;
+        }
+
+        using var problem = new SmoothBowlProblem();
+        using var algorithm = new ipopt();
+        algorithm.set_integer_option("print_level", 0);   // quiet; raise for IPOPT's own iteration log
+
+        using var pop = new population(problem, 1u, 42u);
+        using var evolved = algorithm.evolve(pop);
+
+        if (verbose) PrintAlgorithmLog("ipopt", algorithm.GetLogLines());
+
+        using var championX = evolved.champion_x();
+        using var championF = evolved.champion_f();
+        Console.WriteLine($"  result code = {algorithm.GetLastOptimizationResultCode()}  (0 = Solve_Succeeded)");
+        Console.WriteLine($"  minimum f   = {championF[0]:E3}  at ({championX[0]:F4}, {championX[1]:F4})  (expected ~0 at (0, 3))");
+        Console.WriteLine("  Why it matters: IPOPT exploits the analytic gradient + sparsity for fast local convergence on smooth problems.");
+    }
+
     private sealed record ExperimentResult(string TopologyName, double BestFitness, int MigrationEvents, bool UsedExplicitPolicies);
+}
+
+// Smooth differentiable problem for IPOPT: minimise x^2 + (y-3)^2 (optimum (0,3), f*=0). IPOPT is
+// gradient-based, so it needs has_gradient() = true; supplying the sparsity pattern lets it set up
+// the NLP efficiently.
+internal sealed class SmoothBowlProblem : ManagedProblemBase
+{
+    private readonly DoubleVector _lb = new(new[] { -5.0, -5.0 });
+    private readonly DoubleVector _ub = new(new[] {  5.0,  5.0 });
+    public override string get_name() => "SmoothBowlProblem";
+    public override PairOfDoubleVectors get_bounds() => new(_lb, _ub);
+    public override ThreadSafety get_thread_safety() => ThreadSafety.Constant;
+    public override DoubleVector fitness(DoubleVector x) => new(new[] { x[0] * x[0] + (x[1] - 3.0) * (x[1] - 3.0) });
+    public override bool has_gradient() => true;
+    public override DoubleVector gradient(DoubleVector x) => new(new[] { 2.0 * x[0], 2.0 * (x[1] - 3.0) });
+    public override bool has_gradient_sparsity() => true;
+    public override SparsityPattern gradient_sparsity() => Sparsity((0u, 0u), (0u, 1u));
 }
 
 internal sealed class CloneableRastriginProblem : ManagedProblemBase

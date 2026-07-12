@@ -32,10 +32,21 @@ clear NuGet/.m2/gradle caches before the same-version verifications.
 **Confirmed OK:** `dotnet run` DOES propagate a non-zero app exit code (tested 2→2, incl.
 `-r linux-x64 --self-contained false`) — the clean-room gate is reliable.
 
-**Known follow-up (release, not blocking):** the Linux companion closure is ~157 MB / 216 MB packed
-(OpenBLAS, not MKL — confirmed) because `bundle-native-deps.ps1` copy-all over-collects on Linux
-(conda `lib/` has many transitive `.so`; Windows `Library\bin` was minimal). Under NuGet's 250 MB
-limit but bloated + tight — scope the Linux closure to IPOPT's actual dep graph before release.
+**Closure scoping (DONE 2026-07-11):** replaced copy-all on Linux/macOS with a dependency-graph walk
+from libipopt (Linux `ldd` is already transitive; macOS `otool -L` is direct-only so BFS). Key fact:
+on conda-forge nomkl, `liblapack.so.3`/`.dylib` is a symlink to the OpenBLAS implementation (241
+BLAS/LAPACK symbols) — directly linked, NOT runtime-dlopen'd (that was Windows/MKL only), so the walk
+captures BLAS. Result: **105 libs / 216 MB -> 24 libs / ~43 MB** (both C# nupkg + Java jar), validated
+on Linux — full solve + negative control pass for both. macOS uses the same otool-BFS (validated by
+the macOS release clean-room in the dry-run). Windows stays copy-all (its conda `Library\bin` is
+already minimal, 42 MB). Also fixed a stale-staging bug: `bundle-native-deps.ps1` now wipes its
+OutputDir first, and `build-linux-artifacts.sh` scrubs carried-in staging dirs (a stale
+staged-natives/win-x64 was contaminating the Linux jar).
+
+**Remaining optional trim:** ~33 MB is ICU pulled via SPRAL (`libipopt -> libspral -> hwloc -> xml2
+-> icu`), a linear solver we don't use. Dropping it (nospral conda ipopt, or `patchelf
+--remove-needed libspral`) would reach ~30 MB but needs all-platform validation via the clean-room;
+deferred.
 
 ---
 

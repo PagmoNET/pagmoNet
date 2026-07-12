@@ -45,6 +45,7 @@ public final class Main {
             case "policies"    -> Scenarios.runPolicyComparison(verbose);
             case "maneuver"    -> Scenarios.runOrbitalManeuverOptimization(verbose);
             case "cloning"     -> Scenarios.runCloneableProblemsScenario(verbose);
+            case "ipopt"       -> Scenarios.runIpoptScenario(verbose);
             case "kotlin"      -> KotlinExamples.INSTANCE.run(verbose);
             case "all" -> {
                 Scenarios.runSingleIslandBaseline(verbose);
@@ -57,11 +58,13 @@ public final class Main {
                 System.out.println();
                 Scenarios.runCloneableProblemsScenario(verbose);
                 System.out.println();
+                Scenarios.runIpoptScenario(verbose);
+                System.out.println();
                 KotlinExamples.INSTANCE.run(verbose);
             }
             default -> {
                 System.out.println("Unknown scenario '" + scenario + "'.");
-                System.out.println("Use one of: single, archipelago, policies, maneuver, cloning, kotlin, all");
+                System.out.println("Use one of: single, archipelago, policies, maneuver, cloning, ipopt, kotlin, all");
                 System.out.println("Add --verbose (or -v) to print algorithm logs after each scenario.");
             }
         }

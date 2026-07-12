@@ -270,4 +270,42 @@ final class Scenarios {
                 CloneableRastriginProblem.totalEvaluations.get());
         }
     }
+
+    // Scenario 6 ── IPOPT optional solver (graceful when absent) ──────────────
+
+    // Optional-solver pattern: use IPOPT if its native runtime is present, else skip gracefully.
+    // IPOPT (a gradient-based interior-point solver) is the `ipopt` algorithm in the base package;
+    // the pagmonet4j-ipopt companion package -- or a system libipopt, or the PAGMONET_IPOPT_LIBRARY
+    // override -- supplies the native runtime it loads at startup. A base-only build cleanly skips.
+    static void runIpoptScenario(boolean verbose) {
+        System.out.println("Scenario: IPOPT gradient-based local solve (optional solver)");
+
+        if (!OptionalSolverAvailability.isIpoptAvailable()) {
+            System.out.println("  IPOPT is not available in this build.");
+            System.out.println("  Add the pagmonet4j-ipopt companion package (or set PAGMONET_IPOPT_LIBRARY) to enable it.");
+            System.out.println("  Skipping -- optional native solvers should degrade gracefully, not crash.");
+            return;
+        }
+
+        try (SmoothBowlProblem prob = new SmoothBowlProblem();
+             ipopt algo = new ipopt()) {
+            algo.set_integer_option("print_level", 0);   // quiet; raise for IPOPT's own iteration log
+
+            try (population pop = new population(prob, 1L, 42L);
+                 population evolved = algo.evolve(pop)) {
+
+                if (verbose) Main.printAlgorithmLog("ipopt", algo.getLogLines());
+
+                DoubleVector x = evolved.champion_x();
+                DoubleVector f = evolved.champion_f();
+                System.out.printf("  result code = %d  (0 = Solve_Succeeded)%n",
+                    algo.get_last_opt_result_code());
+                System.out.printf("  minimum f   = %.3e  at (%.4f, %.4f)  (expected ~0 at (0, 3))%n",
+                    f.get(0), x.get(0), x.get(1));
+                x.delete();
+                f.delete();
+                System.out.println("  Why it matters: IPOPT exploits the analytic gradient + sparsity for fast local convergence on smooth problems.");
+            }
+        }
+    }
 }
