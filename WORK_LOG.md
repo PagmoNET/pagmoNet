@@ -4,6 +4,51 @@ Active journal for cross-session / cross-device continuity. Newest session on to
 
 ---
 
+## 2026-07-12 — Linux companion missing OpenBLAS alias (libblas.so.3); bundler self-containment gate
+
+Clean-box testing (user's Linux machine, genuinely no system BLAS) caught another real bug CI missed:
+the `ipopt` example reported IPOPT "not available" on Linux for **both** .NET and Java, even though the
+companion nupkg/jar were built with IPOPT. Base wrapper loaded fine — only `dlopen(libipopt.so.3)`
+failed.
+
+**Root cause:** `libipopt.so.3` has `DT_NEEDED` for **both** `liblapack.so.3` and `libblas.so.3`. On
+conda-forge `nomkl`, both are aliases of one OpenBLAS blob (SONAME `libopenblas.so.0`; confirmed it
+exports `cblas_dgemm`/`dgemm_`). The old Linux path in `bundle-native-deps.ps1` walked **`ldd`'s
+resolved paths** and keyed by basename — so on the build box `libblas.so.3` either resolved to a
+*system* BLAS (dropped by the in-SearchDir filter) or collapsed into `liblapack.so.3` by shared SONAME.
+Only `liblapack.so.3` got bundled; a clean box asking for `libblas.so.3` by name → `dlopen` fails →
+"not available." **CI never caught it**: the build-ipopt Linux job tests against apt
+`coinor-libipopt-dev` + system BLAS, and even GitHub runners have a system `libblas.so.3`, so the
+missing alias was silently borrowed. Verified in WSL: BEFORE, `libblas.so.3 => /usr/lib/.../libblas.so.3`
+(system); adding a local copy → `libblas.so.3 => $ORIGIN/libblas.so.3`, not-found count 0.
+
+**Fix (`scripts/bundle-native-deps.ps1`, shared by C#+Java release workflows AND local
+`build-linux-artifacts.sh`):**
+1. Linux now walks the closure by **DT_NEEDED name** via `patchelf --print-needed` (BFS, mirroring the
+   macOS `otool -L` walk) instead of `ldd` resolved paths — so every alias a binary asks for is
+   bundled as a real file, even when several map to one physical library. glibc core libs are an
+   explicit skip-list; anything else not found in a SearchDir warns.
+2. Added a **self-containment gate**: after staging, every DT_NEEDED of every bundled ELF must resolve
+   to a bundled sibling or glibc core, else the build **throws**. Can't be fooled by a contaminated
+   runner the way a clean-room can — this is the durable prevention.
+
+Fixed the stale top-of-file doc that wrongly claimed BLAS "never appears in any static import table"
+(true only for MKL/Windows dlopen-forwarders; on nomkl Linux OpenBLAS is a direct DT_NEEDED).
+
+**Not yet done:** (a) rebuild Linux companions with the fixed bundler (user can re-run
+`build-linux-artifacts.sh`, or CI release); note NuGet global-packages cache holds the old
+`1.0.0-local` — clear it or bump version. (b) CI coverage gap: the Linux clean-room should install
+ONLY the bundled release companion (no apt libipopt, ideally a BLAS-free image) and assert a solve +
+self-containment. The bundler gate largely closes this regardless. (c) Size follow-up: OpenBLAS is now
+duplicated (libblas.so.3 + liblapack.so.3, ~41 MB each); a `patchelf --replace-needed ... libopenblas.so.0`
+pass could ship it once — deferred, correctness first.
+
+**Immediate user unblock:** on the Linux box, in the dir holding `libipopt.so.3`,
+`cp liblapack.so.3 libblas.so.3` (rpath `$ORIGIN` is already inherited) makes IPOPT work — confirms
+the diagnosis on the real clean machine.
+
+---
+
 ## 2026-07-09 — Deferred-loader bug (app-local libipopt) + Linux clean-box packages
 
 Clean-box (WSL) testing caught a real bug the CI didn't: the offline C# clean-room reported "IPOPT

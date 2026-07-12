@@ -18,11 +18,18 @@
     (C#) / natives/<rid> (Java) directory as the base wrapper, where deferred_ipopt's dlopen
     finds it (searching its own module directory first).
 
-    Why copy-ALL rather than walk the import/otool/ldd closure: conda-forge's libblas/liblapack
-    are thin forwarders that LOAD the real OpenBLAS at runtime, so the BLAS implementation never
-    appears in any static import table. An import-table walk therefore produces a payload that
-    fails on a clean machine ("Could not load IPOPT"). Because the env was created with only
-    `ipopt nomkl`, copying every non-system shared library in it is complete by construction.
+    Windows copies ALL non-system DLLs from the env rather than walking the import table: there,
+    conda-forge's libblas/liblapack are thin forwarders that dlopen the real OpenBLAS at runtime, so
+    the BLAS implementation never appears in a static import table and an import-table walk would ship
+    a payload that fails on a clean machine. Because the env was created with only `ipopt nomkl`,
+    copying every non-system DLL is complete by construction.
+
+    Linux and macOS instead walk the dependency closure by NAME (DT_NEEDED / otool -L), because on
+    those platforms nomkl links OpenBLAS directly (liblapack / libblas are aliases of the OpenBLAS
+    library, both direct dependencies) -- so the closure is complete AND far smaller than copy-all,
+    which drags in unrelated env libraries. The walk is by dependency NAME, not by the build box's
+    resolved path, so every alias a binary asks for (e.g. both libblas.so.3 and liblapack.so.3, which
+    share one SONAME) is bundled -- a path-based walk silently dropped one and broke clean machines.
 
     Platform behaviour (each stages the same closure, differing only in how the copied libraries
     are made to resolve each other from the package directory):
@@ -104,34 +111,76 @@ if ($IsLinux) {
     }
     if (-not $ipopt) { throw "libipopt.so not found in any -SearchDir." }
 
-    # `ldd` lists the FULL transitive closure; keep only entries resolving inside a -SearchDir. That
-    # is IPOPT's real runtime dependency closure -- far smaller than copying the whole conda env,
-    # which pulls in unrelated libraries (icu, xml2, ...) IPOPT never touches. On conda-forge nomkl,
-    # liblapack.so.3 is a symlink to the OpenBLAS implementation, so BLAS/LAPACK IS captured here
-    # (it is NOT runtime-dlopen'd the way MKL is on Windows).
-    $wanted = @{}
-    foreach ($line in (& ldd $ipopt.FullName 2>$null)) {
-        if ($line -match '=>\s*(/\S+)') {
-            $resolved = $matches[1]
-            if (Test-Path $resolved) {
-                foreach ($dir in $searchDirs) {
-                    if ($resolved.StartsWith($dir, [System.StringComparison]::Ordinal)) {
-                        $wanted[[System.IO.Path]::GetFileName($resolved)] = $resolved
-                        break
-                    }
-                }
-            }
+    # Walk IPOPT's DT_NEEDED closure by NAME (like the macOS otool -L BFS below), rather than parsing
+    # what `ldd` RESOLVED each name to. `ldd` reports the build machine's resolution, which is a trap
+    # here: conda-forge nomkl makes libblas.so.3 AND liblapack.so.3 two aliases of one OpenBLAS blob
+    # (both SONAME libopenblas.so.0). On the build box `ldd` can satisfy libblas.so.3 from a system
+    # BLAS (then our in-SearchDir filter drops it) or collapse it into liblapack.so.3 by shared SONAME
+    # -- either way only one name got bundled, and a clean box asking for the other name by DT_NEEDED
+    # failed to load ("Could not load IPOPT"). Reading DT_NEEDED keeps every name a bundled ELF asks
+    # for, so each is present as a real file even when several map to the same physical library.
+    #
+    # glibc core libraries are present on every Linux and are intentionally NOT bundled; everything
+    # else a bundled ELF needs must travel with the payload.
+    $systemLibs = @(
+        'libc.so.6', 'libm.so.6', 'libdl.so.2', 'libpthread.so.0', 'librt.so.1', 'libresolv.so.2',
+        'libutil.so.1', 'libnsl.so.1', 'libanl.so.1', 'ld-linux-x86-64.so.2', 'ld-linux.so.2'
+    )
+    function Find-InSearch([string]$name) {
+        foreach ($dir in $searchDirs) {
+            $c = Join-Path $dir $name
+            if (Test-Path $c) { return (Get-Item $c) }
         }
+        return $null
     }
 
+    $bundled = @{}
+    $queue = [System.Collections.Queue]::new()
     Copy-Lib $ipopt
-    foreach ($name in $wanted.Keys) { Copy-Lib (Get-Item $wanted[$name]) }
+    $bundled[$ipopt.Name] = $true
+    $queue.Enqueue($ipopt.FullName)
+    while ($queue.Count -gt 0) {
+        foreach ($name in (& patchelf --print-needed $queue.Dequeue() 2>$null)) {
+            if ($bundled.ContainsKey($name) -or ($systemLibs -contains $name)) { continue }
+            $item = Find-InSearch $name
+            if (-not $item) {
+                Write-Warning "DT_NEEDED '$name' not found in any -SearchDir and is not a known glibc lib; leaving it to the target loader."
+                continue
+            }
+            Copy-Lib $item
+            $bundled[$name] = $true
+            # Read NEEDED from the staged copy (Copy-Lib resolved the symlink to real content).
+            $queue.Enqueue((Join-Path $OutputDir $name))
+        }
+    }
 
     # Point every bundled ELF at its own directory so siblings resolve with no LD_LIBRARY_PATH.
     foreach ($f in Get-ChildItem -Path $OutputDir -File) {
         & patchelf --set-rpath '$ORIGIN' $f.FullName 2>$null
     }
-    Write-Host "Linux: staged $((Get-ChildItem $OutputDir -File).Count) libs (IPOPT dependency closure) into $OutputDir (RPATH=`$ORIGIN)."
+
+    # Self-containment gate: every DT_NEEDED of every bundled ELF must resolve to a bundled sibling or
+    # a glibc core library -- never to a system copy that merely happens to exist on the build box.
+    # This fails the BUILD (not the end user) if a dependency name slipped through, and it can't be
+    # fooled by a contaminated runner the way a clean-room test can -- which is precisely how a missing
+    # OpenBLAS alias (libblas.so.3, satisfied by the CI machine's own libblas) shipped once already.
+    $present = @{}
+    foreach ($f in Get-ChildItem -Path $OutputDir -File) { $present[$f.Name] = $true }
+    $missing = [System.Collections.Generic.List[string]]::new()
+    foreach ($f in Get-ChildItem -Path $OutputDir -File) {
+        foreach ($name in (& patchelf --print-needed $f.FullName 2>$null)) {
+            if (-not $present.ContainsKey($name) -and -not ($systemLibs -contains $name)) {
+                $missing.Add("$($f.Name) -> $name")
+            }
+        }
+    }
+    if ($missing.Count -gt 0) {
+        throw ("IPOPT closure is not self-contained; these DT_NEEDED are neither bundled nor glibc core:`n  " `
+            + ($missing -join "`n  ") `
+            + "`nAdd the missing library to the conda env / -SearchDir, or, if it is genuinely provided by every target system, add it to `$systemLibs.")
+    }
+
+    Write-Host "Linux: staged $((Get-ChildItem $OutputDir -File).Count) libs (self-contained IPOPT DT_NEEDED closure) into $OutputDir (RPATH=`$ORIGIN)."
     return
 }
 
