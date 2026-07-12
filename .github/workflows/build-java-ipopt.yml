@@ -53,11 +53,11 @@ jobs:
 
       - name: Regenerate SWIG Java bindings
         run: |
-          New-Item -ItemType Directory -Force -Path "PagmoNet4j/core/src/generated/java/io/github/samthegliderpilot/pagmonet4j" | Out-Null
+          New-Item -ItemType Directory -Force -Path "PagmoNet4j/core/src/generated/java/io/github/pagmonet/pagmonet4j" | Out-Null
           New-Item -ItemType Directory -Force -Path "PagmoNet4j/pagmoWrapper/generated" | Out-Null
           swig -java -c++ `
-            -package "io.github.samthegliderpilot.pagmonet4j" `
-            -outdir "PagmoNet4j/core/src/generated/java/io/github/samthegliderpilot/pagmonet4j" `
+            -package "io.github.pagmonet.pagmonet4j" `
+            -outdir "PagmoNet4j/core/src/generated/java/io/github/pagmonet/pagmonet4j" `
             -o "PagmoNet4j/pagmoWrapper/generated/pagmonet4j_wrap.cxx" `
             -Iswig `
             -Inative `
@@ -119,11 +119,11 @@ jobs:
 
       - name: Regenerate SWIG Java bindings
         run: |
-          mkdir -p PagmoNet4j/core/src/generated/java/io/github/samthegliderpilot/pagmonet4j
+          mkdir -p PagmoNet4j/core/src/generated/java/io/github/pagmonet/pagmonet4j
           mkdir -p PagmoNet4j/pagmoWrapper/generated
           swig -java -c++ \
-            -package "io.github.samthegliderpilot.pagmonet4j" \
-            -outdir "PagmoNet4j/core/src/generated/java/io/github/samthegliderpilot/pagmonet4j" \
+            -package "io.github.pagmonet.pagmonet4j" \
+            -outdir "PagmoNet4j/core/src/generated/java/io/github/pagmonet/pagmonet4j" \
             -o "PagmoNet4j/pagmoWrapper/generated/pagmonet4j_wrap.cxx" \
             -Iswig \
             -Inative \
@@ -189,11 +189,11 @@ jobs:
 
       - name: Regenerate SWIG Java bindings
         run: |
-          mkdir -p PagmoNet4j/core/src/generated/java/io/github/samthegliderpilot/pagmonet4j
+          mkdir -p PagmoNet4j/core/src/generated/java/io/github/pagmonet/pagmonet4j
           mkdir -p PagmoNet4j/pagmoWrapper/generated
           swig -java -c++ \
-            -package "io.github.samthegliderpilot.pagmonet4j" \
-            -outdir "PagmoNet4j/core/src/generated/java/io/github/samthegliderpilot/pagmonet4j" \
+            -package "io.github.pagmonet.pagmonet4j" \
+            -outdir "PagmoNet4j/core/src/generated/java/io/github/pagmonet/pagmonet4j" \
             -o "PagmoNet4j/pagmoWrapper/generated/pagmonet4j_wrap.cxx" \
             -Iswig \
             -Inative \

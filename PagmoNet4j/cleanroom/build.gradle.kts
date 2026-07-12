@@ -18,7 +18,7 @@ val pagmoVersion: String =
         ?: error("Set -PpagmoVersion=<version> (the published pagmonet4j version to test).")
 
 dependencies {
-    implementation("io.github.samthegliderpilot:pagmonet4j:$pagmoVersion")
+    implementation("io.github.pagmonet:pagmonet4j:$pagmoVersion")
 }
 
 application {

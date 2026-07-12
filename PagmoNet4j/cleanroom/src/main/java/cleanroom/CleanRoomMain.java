@@ -1,7 +1,7 @@
 package cleanroom;
 
-import io.github.samthegliderpilot.pagmonet4j.*;
-import io.github.samthegliderpilot.pagmonet4j.problems.*;
+import io.github.pagmonet.pagmonet4j.*;
+import io.github.pagmonet.pagmonet4j.problems.*;
 
 /**
  * Clean-room consumer of the published pagmonet4j (base, IPOPT-free) fat jar.

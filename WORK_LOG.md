@@ -4,6 +4,38 @@ Active journal for cross-session / cross-device continuity. Newest session on to
 
 ---
 
+## 2026-07-12 — Java groupId rename: io.github.samthegliderpilot → io.github.pagmonet
+
+User created the `pagmonet` GitHub org (for Maven Central `io.github.*` namespace verification) and
+had the Java groupId/package renamed off his personal handle. **C# side unchanged** (its namespace is
+`pagmo` / `Pagmo.NET`; author/copyright legitimately stay `samthegliderpilot`).
+
+**Surgical rename — three prefixed identifier forms only**, so repo URLs / GH Packages publish URLs /
+SCM / developer id+email (all bare `github.com/samthegliderpilot`, `id.set("samthegliderpilot")`, etc.)
+were **preserved by construction**:
+- `io.github.samthegliderpilot` → `io.github.pagmonet` (dotted: packages, groupId, gradle deps, mainClass)
+- `io/github/samthegliderpilot` → `io/github/pagmonet` (fwd-slash paths: swig -outdir, mkdir)
+- `io_github_samthegliderpilot` → `io_github_pagmonet` (JNI mangling; regenerated anyway)
+- Plus a **backslash** path form `io\github\samthegliderpilot\pagmonet4j` in `regen-swig.ps1` that the
+  fwd-slash sed missed — fixed separately (watch for `\`-delimited paths in any future rename).
+
+Touched ~290 files (mostly checked-in SWIG-generated bindings) + moved 7 package dirs (core main/test/
+generated, examples java+kotlin, kotlin-ext main/test). All swig `-package`/`-outdir` across the 4 java
+workflows + `build-linux-artifacts.sh` + `regen-swig.ps1` now agree; gradle `group` updated in both
+`gradle.properties`. Skipped `hs_err_pid*.log` crash-dump junk.
+
+**Validated end-to-end** (WSL full build, exit 0): Java native regenerated with new JNI names, base
+loaded with **no UnsatisfiedLinkError**, both clean-room solves passed (negative control + positive
+IPOPT solve); fresh jar has all classes under `io/github/pagmonet/pagmonet4j/`, zero `samthegliderpilot`.
+
+**Y-drive re-stage:** `Java-Linux/` refreshed — renamed jars + examples repackaged to the new package.
+**Still stale:** `Java-Windows/` jars+examples are pre-rename (old namespace, internally consistent) —
+need a Windows Java rebuild to match; CI release will produce renamed Windows/mac artifacts. **Open
+decision:** repo/publish URLs still point at `github.com/samthegliderpilot` — user's call whether to
+move the repos into the `pagmonet` org (would update POM `<url>`/`<scm>` + GH Packages targets).
+
+---
+
 ## 2026-07-12 — Linux companion missing OpenBLAS alias (libblas.so.3); bundler self-containment gate
 
 Clean-box testing (user's Linux machine, genuinely no system BLAS) caught another real bug CI missed:

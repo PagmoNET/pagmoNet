@@ -19,7 +19,7 @@ dependencies {
 }
 
 application {
-    mainClass.set("io.github.samthegliderpilot.pagmonet4j.examples.Main")
+    mainClass.set("io.github.pagmonet.pagmonet4j.examples.Main")
 }
 
 tasks.run.configure {

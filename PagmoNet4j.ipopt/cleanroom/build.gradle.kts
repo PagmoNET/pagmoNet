@@ -26,9 +26,9 @@ val pagmoBaseOnly: Boolean = (findProperty("pagmoBaseOnly") as String?) == "true
 
 dependencies {
     if (pagmoBaseOnly) {
-        implementation("io.github.samthegliderpilot:pagmonet4j:$pagmoIpoptVersion")
+        implementation("io.github.pagmonet:pagmonet4j:$pagmoIpoptVersion")
     } else {
-        implementation("io.github.samthegliderpilot:pagmonet4j-ipopt:$pagmoIpoptVersion")
+        implementation("io.github.pagmonet:pagmonet4j-ipopt:$pagmoIpoptVersion")
     }
 }
 

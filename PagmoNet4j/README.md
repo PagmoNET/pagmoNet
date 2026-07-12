@@ -14,9 +14,9 @@ repositories {
     }
 }
 dependencies {
-    implementation("io.github.samthegliderpilot:pagmonet4j:1.0.0")
+    implementation("io.github.pagmonet:pagmonet4j:1.0.0")
     // optional Kotlin DSL extensions:
-    implementation("io.github.samthegliderpilot:pagmonet4j-kotlin:1.0.0")
+    implementation("io.github.pagmonet:pagmonet4j-kotlin:1.0.0")
 }
 ```
 
@@ -25,8 +25,8 @@ dependencies {
 ## Quickstart
 
 ```java
-import io.github.samthegliderpilot.pagmonet4j.*;
-import io.github.samthegliderpilot.pagmonet4j.problems.ManagedProblemBase;
+import io.github.pagmonet.pagmonet4j.*;
+import io.github.pagmonet.pagmonet4j.problems.ManagedProblemBase;
 
 // 1. Define your problem — minimise x² + (y-3)²
 class MyProblem extends ManagedProblemBase {

@@ -27,7 +27,7 @@ repositories {
     }
 }
 dependencies {
-    implementation("io.github.samthegliderpilot:pagmonet4j-ipopt:1.0.0")
+    implementation("io.github.pagmonet:pagmonet4j-ipopt:1.0.0")
 }
 ```
 
@@ -36,8 +36,8 @@ dependencies {
 ## Usage
 
 ```java
-import io.github.samthegliderpilot.pagmonet4j.*;
-import io.github.samthegliderpilot.pagmonet4j.problems.ManagedProblemBase;
+import io.github.pagmonet.pagmonet4j.*;
+import io.github.pagmonet.pagmonet4j.problems.ManagedProblemBase;
 
 class MyProblem extends ManagedProblemBase {
     @Override public DoubleVector fitness(DoubleVector x) { /* ... */ }

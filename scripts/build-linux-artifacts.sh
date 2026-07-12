@@ -76,9 +76,9 @@ cp /tmp/pkgs/*.nupkg "$OUT/dotnet/"
 
 # ── Java base ──────────────────────────────────────────────────────────────────────────────────
 echo "==> [3/6] Java base native (libpagmonet4j.so) + jar"
-mkdir -p PagmoNet4j/core/src/generated/java/io/github/samthegliderpilot/pagmonet4j PagmoNet4j/pagmoWrapper/generated
-swig -java -c++ -package "io.github.samthegliderpilot.pagmonet4j" \
-  -outdir "PagmoNet4j/core/src/generated/java/io/github/samthegliderpilot/pagmonet4j" \
+mkdir -p PagmoNet4j/core/src/generated/java/io/github/pagmonet/pagmonet4j PagmoNet4j/pagmoWrapper/generated
+swig -java -c++ -package "io.github.pagmonet.pagmonet4j" \
+  -outdir "PagmoNet4j/core/src/generated/java/io/github/pagmonet/pagmonet4j" \
   -o "PagmoNet4j/pagmoWrapper/generated/pagmonet4j_wrap.cxx" \
   -Iswig -Inative swig/Pagmo4jSwigInterface.i
 "$PWSH" -NoProfile -File PagmoNet4j/scripts/build-native.ps1 -Configuration Release
@@ -121,9 +121,9 @@ cp -r PagmoNet4j/core/build/localrepo/* "$REPO_M/"
 cp -r PagmoNet4j.ipopt/build/localrepo/* "$REPO_M/"
 # Drop cached same-version artifacts (mavenLocal + gradle module cache) so the clean-room resolves
 # the freshly-built jars, not stale copies.
-rm -rf "$HOME/.m2/repository/io/github/samthegliderpilot" \
-       "$HOME/.gradle/caches/modules-2/files-2.1/io.github.samthegliderpilot" \
-       "$HOME/.gradle/caches/modules-2/metadata-"*/descriptors/io.github.samthegliderpilot 2>/dev/null || true
+rm -rf "$HOME/.m2/repository/io/github/pagmonet" \
+       "$HOME/.gradle/caches/modules-2/files-2.1/io.github.pagmonet" \
+       "$HOME/.gradle/caches/modules-2/metadata-"*/descriptors/io.github.pagmonet 2>/dev/null || true
 echo "   -- negative control: base ONLY, IPOPT must be UNavailable --"
 PAGMONET_CLEANROOM_EXPECT=absent ./PagmoNet4j.ipopt/gradlew -p PagmoNet4j.ipopt/cleanroom run \
   -PpagmoIpoptVersion="$VER" -PlocalRepo="$REPO_M" -PpagmoBaseOnly=true --console=plain

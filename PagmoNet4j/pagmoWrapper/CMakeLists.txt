@@ -138,7 +138,7 @@ add_custom_command(
     OUTPUT "${JNI_WRAP_SRC}"
     COMMAND ${SWIG_EXECUTABLE}
         -java -c++
-        -package "io.github.samthegliderpilot.pagmonet4j"
+        -package "io.github.pagmonet.pagmonet4j"
         -outdir "${SWIG_JAVA_OUTDIR}"
         -o "${JNI_WRAP_SRC}"
         "-I${PAGMONET_ROOT}/swig"

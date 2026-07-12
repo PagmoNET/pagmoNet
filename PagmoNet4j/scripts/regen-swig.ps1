@@ -27,14 +27,14 @@ $pagmoNetRoot = Resolve-Path $pagmoNetRoot
 
 $nativeSrc = Join-Path $pagmoNetRoot "native"
 $swigDir   = Join-Path $pagmoNetRoot "swig"
-$javaOut   = Join-Path $repoRoot "core\src\generated\java\io\github\samthegliderpilot\pagmonet4j"
+$javaOut   = Join-Path $repoRoot "core\src\generated\java\io\github\pagmonet\pagmonet4j"
 $wrapOut   = Join-Path $repoRoot "pagmoWrapper\generated\pagmonet4j_wrap.cxx"
 
 New-Item -ItemType Directory -Force $javaOut | Out-Null
 
 $swigArgs = @(
     "-c++", "-java",
-    "-package", "io.github.samthegliderpilot.pagmonet4j",
+    "-package", "io.github.pagmonet.pagmonet4j",
     "-outdir",  $javaOut,
     "-o",       $wrapOut,
     "-I$nativeSrc",
