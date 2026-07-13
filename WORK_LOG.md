@@ -4,6 +4,33 @@ Active journal for cross-session / cross-device continuity. Newest session on to
 
 ---
 
+## 2026-07-13 — OpenBLAS dedup (replaces the "hacking in a fix" libblas commit)
+
+The earlier libblas fix (commit `0bfff9f`) bundled every DT_NEEDED name, which was correct but shipped
+OpenBLAS TWICE (libblas.so.3 + liblapack.so.3, ~41 MB each) since libipopt names it under two aliases.
+Replaced that waste with proper content-dedup in `scripts/bundle-native-deps.ps1`:
+
+- **Linux + macOS**: after the closure is staged, SHA256-group the files; for any group of identical
+  files shipped under >1 name, keep ONE copy under its SONAME / install-id basename (e.g.
+  `libopenblas.so.0`) and repoint every bundled binary's aliased references at it
+  (`patchelf --replace-needed` on Linux; `install_name_tool -change` on macOS). Symlinks would be the
+  obvious move but don't survive nupkg/jar packing. Content-hash based ⇒ a **no-op when there is no
+  duplication**, so it's safe on the untested macOS path.
+- macOS also got a self-containment **warning** (not a throw like Linux's gate) — surfaces an
+  incomplete closure without risking a false-positive blocking the macOS release before it's validated
+  on real hardware.
+
+**Validated (Linux, WSL full build, exit 0):** "de-duplicated 2 alias(es) -> libopenblas.so.0", both
+clean-room solves passed (C# `PASS`, Java `f=0.0 CLEAN-ROOM PASS`), companions dropped ~13 MB each
+(nupkg 58.8→45.5 MB, jar 57.2→44.2 MB), single `libopenblas.so.0` in the packaged artifacts. Re-staged
+to Y `CSharp-Linux`/`Java-Linux`. **macOS**: dedup + warning added, script parses clean, but UNTESTED
+locally (no Mac) — will be exercised by the RC macOS build + the user's real-Mac test.
+
+Uncommitted at end of session: `scripts/bundle-native-deps.ps1`, `WORK_LOG.md`. Windows companion still
+uses copy-all (small, ~13 MB); did not check it for the same dup — possible minor follow-up.
+
+---
+
 ## 2026-07-12 — Java groupId rename: io.github.samthegliderpilot → io.github.pagmonet
 
 User created the `pagmonet` GitHub org (for Maven Central `io.github.*` namespace verification) and
@@ -29,10 +56,22 @@ loaded with **no UnsatisfiedLinkError**, both clean-room solves passed (negative
 IPOPT solve); fresh jar has all classes under `io/github/pagmonet/pagmonet4j/`, zero `samthegliderpilot`.
 
 **Y-drive re-stage:** `Java-Linux/` refreshed — renamed jars + examples repackaged to the new package.
-**Still stale:** `Java-Windows/` jars+examples are pre-rename (old namespace, internally consistent) —
-need a Windows Java rebuild to match; CI release will produce renamed Windows/mac artifacts. **Open
-decision:** repo/publish URLs still point at `github.com/samthegliderpilot` — user's call whether to
-move the repos into the `pagmonet` org (would update POM `<url>`/`<scm>` + GH Packages targets).
+**Open decision:** repo/publish URLs still point at `github.com/samthegliderpilot` — user's call whether
+to move the repos into the `pagmonet` org (would update POM `<url>`/`<scm>` + GH Packages targets).
+
+### Windows Java jars rebuilt (new namespace) — "last local build before publishing"
+User added JDK 21 at `C:\Programs\jdk-21` (also has jdk-25, but gradle toolchains match exact major →
+21 is the CI-parity one; `:core` uses plain sourceCompat 17, no strict toolchain, so 21 builds it).
+Installed **SWIG 4.4.1 on Windows via winget** (`SWIG.SWIG`; CMake `find_package(SWIG REQUIRED)` needs
+it even with a pre-generated wrap.cxx). Steps: regen wrapper (new package) → `PagmoNet4j/scripts/build-native.ps1`
+(JDK21 + cached vcpkg pagmo x64-windows-static) → `gradlew :core:clean :core:jar` (clean was REQUIRED —
+a stale pre-rename `core/build/` produced a jar with new native but OLD-package classes) → companion
+`gradlew jar` (pure payload; reused the 13 existing win-x64 IPOPT DLLs since conda env was gone).
+`pagmonet4j.dll` exports `Java_io_github_pagmonet_...`, base jar = 193 pagmonet classes / 0 samthegliderpilot.
+**Validated end-to-end on Windows:** Y `Java-Windows` example `ipopt` scenario solved (rc=0, f=4.2e-24).
+Also fixed the hardcoded main class in the Y `run.ps1`/`run.sh` launchers (still said samthegliderpilot).
+Both platforms' Java jars (Win + Linux) now renamed, staged to `local-packages*/java` and Y, validated.
+mac artifacts + authoritative publish builds come from CI (release workflows already rename-consistent).
 
 ---
 

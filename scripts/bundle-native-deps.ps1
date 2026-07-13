@@ -154,6 +154,45 @@ if ($IsLinux) {
         }
     }
 
+    # De-duplicate identical libraries shipped under multiple DT_NEEDED aliases. conda-forge nomkl
+    # makes libblas.so.3 and liblapack.so.3 two NAMES for one OpenBLAS blob (SONAME libopenblas.so.0),
+    # and libipopt/MUMPS/SPRAL reference it under both -- so the by-name walk above bundled it twice
+    # (~40 MB wasted). A symlink would collapse them but does not survive nupkg/jar packing, so instead
+    # keep ONE copy under its SONAME and repoint every bundled ELF's aliased NEEDED entries at it.
+    $byHash = @{}
+    foreach ($f in Get-ChildItem -Path $OutputDir -File) {
+        $h = (Get-FileHash -Path $f.FullName -Algorithm SHA256).Hash
+        if (-not $byHash.ContainsKey($h)) { $byHash[$h] = [System.Collections.Generic.List[string]]::new() }
+        $byHash[$h].Add($f.Name)
+    }
+    $aliasMap = @{}   # dropped alias name -> canonical (kept) name
+    foreach ($names in $byHash.Values) {
+        if ($names.Count -lt 2) { continue }
+        # Canonical name = the library's own SONAME (best practice: file name == SONAME); if it reports
+        # none, keep the first alias as canonical.
+        $soname = "$(& patchelf --print-soname (Join-Path $OutputDir $names[0]) 2>$null)".Trim()
+        $canonical = if ($soname) { $soname } else { $names[0] }
+        if (-not (Test-Path (Join-Path $OutputDir $canonical))) {
+            Move-Item (Join-Path $OutputDir $names[0]) (Join-Path $OutputDir $canonical) -Force
+        }
+        foreach ($n in $names) {
+            if ($n -eq $canonical) { continue }
+            $p = Join-Path $OutputDir $n
+            if (Test-Path $p) { Remove-Item $p -Force }
+            $aliasMap[$n] = $canonical
+        }
+    }
+    if ($aliasMap.Count -gt 0) {
+        foreach ($f in Get-ChildItem -Path $OutputDir -File) {
+            foreach ($needed in (& patchelf --print-needed $f.FullName 2>$null)) {
+                if ($aliasMap.ContainsKey($needed)) {
+                    & patchelf --replace-needed $needed $aliasMap[$needed] $f.FullName 2>$null
+                }
+            }
+        }
+        Write-Host "Linux: de-duplicated $($aliasMap.Count) alias(es) -> $(($aliasMap.Values | Sort-Object -Unique) -join ', ')."
+    }
+
     # Point every bundled ELF at its own directory so siblings resolve with no LD_LIBRARY_PATH.
     foreach ($f in Get-ChildItem -Path $OutputDir -File) {
         & patchelf --set-rpath '$ORIGIN' $f.FullName 2>$null
@@ -237,16 +276,68 @@ if ($IsMacOS) {
         }
     }
 
-    # Rewrite install names so everything resolves via @loader_path (its own id, and every reference
-    # to a bundled sibling), then re-sign ad-hoc (rewriting invalidates signatures).
+    # De-duplicate identical dylibs shipped under multiple names -- conda-forge nomkl makes libblas and
+    # liblapack aliases of one OpenBLAS dylib, and the otool walk above bundles each name (~40 MB waste).
+    # A symlink would collapse them but does not survive nupkg/jar packing, so keep ONE copy under its
+    # install-id basename (the macOS analog of SONAME) and repoint references. Content-hash based, so it
+    # is a no-op when there is no duplication.
+    $byHash = @{}
+    foreach ($f in Get-ChildItem -Path $OutputDir -File) {
+        $h = (Get-FileHash -Path $f.FullName -Algorithm SHA256).Hash
+        if (-not $byHash.ContainsKey($h)) { $byHash[$h] = [System.Collections.Generic.List[string]]::new() }
+        $byHash[$h].Add($f.Name)
+    }
+    $aliasMap = @{}   # dropped alias basename -> canonical (kept) basename
+    foreach ($names in $byHash.Values) {
+        if ($names.Count -lt 2) { continue }
+        $idOut = & otool -D (Join-Path $OutputDir $names[0]) 2>$null
+        $idLine = if ($idOut.Count -ge 2) { "$($idOut[-1])".Trim() } else { "" }
+        $canonical = if ($idLine) { [System.IO.Path]::GetFileName($idLine) } else { $names[0] }
+        if (-not (Test-Path (Join-Path $OutputDir $canonical))) {
+            Move-Item (Join-Path $OutputDir $names[0]) (Join-Path $OutputDir $canonical) -Force
+            $bundled.Remove($names[0]); $bundled[$canonical] = $true
+        }
+        foreach ($n in $names) {
+            if ($n -eq $canonical) { continue }
+            $p = Join-Path $OutputDir $n
+            if (Test-Path $p) { Remove-Item $p -Force }
+            $bundled.Remove($n)
+            $aliasMap[$n] = $canonical
+        }
+    }
+    if ($aliasMap.Count -gt 0) {
+        Write-Host "macOS: de-duplicated $($aliasMap.Count) alias(es) -> $(($aliasMap.Values | Sort-Object -Unique) -join ', ')."
+    }
+
+    # Rewrite install names so everything resolves via @loader_path (its own id, and every reference to
+    # a bundled sibling -- aliased names map to the canonical kept above), then re-sign ad-hoc (rewriting
+    # invalidates signatures).
     foreach ($f in Get-ChildItem -Path $OutputDir -File) {
         $path = $f.FullName
         & install_name_tool -id "@loader_path/$($f.Name)" $path 2>$null
         foreach ($ref in (Get-OtoolDeps $path)) {
             $refBase = [System.IO.Path]::GetFileName($ref)
-            if ($bundled.ContainsKey($refBase) -and $ref -ne "@loader_path/$refBase") {
-                & install_name_tool -change $ref "@loader_path/$refBase" $path
+            $target = if ($aliasMap.ContainsKey($refBase)) { $aliasMap[$refBase] } else { $refBase }
+            if ($bundled.ContainsKey($target) -and $ref -ne "@loader_path/$target") {
+                & install_name_tool -change $ref "@loader_path/$target" $path
             }
+        }
+    }
+
+    # Self-containment check (macOS): after rewriting, every non-system dependency should resolve to a
+    # bundled @loader_path sibling. Anything still on @rpath, an absolute path, or a missing @loader_path
+    # target means the closure is incomplete. Kept as a WARNING (not a throw like the Linux gate) until
+    # this path is validated on real macOS hardware, so a false positive can't block the macOS release.
+    foreach ($f in Get-ChildItem -Path $OutputDir -File) {
+        foreach ($ref in (Get-OtoolDeps $f.FullName)) {
+            if ($ref -like '/usr/lib/*' -or $ref -like '/System/*') { continue }   # OS-provided
+            if ($ref -like '@loader_path/*') {
+                if (-not (Test-Path (Join-Path $OutputDir ([System.IO.Path]::GetFileName($ref))))) {
+                    Write-Warning "macOS closure: $($f.Name) -> $ref (bundled file missing)"
+                }
+                continue
+            }
+            Write-Warning "macOS closure: $($f.Name) -> $ref (not resolved to a bundled sibling)"
         }
     }
     if (-not $SkipCodeSign) {
