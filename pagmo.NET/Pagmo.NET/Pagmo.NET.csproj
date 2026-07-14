@@ -8,7 +8,7 @@
     <Authors>Pagmo.NET contributors</Authors>
     <Description>C# bindings and ergonomic wrappers for pagmo.</Description>
     <PackageLicenseExpression>MPL-2.0</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/samthegliderpilot/Pagmo.NET</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/PagmoNET/pagmoNet</PackageProjectUrl>
     <PackageReadmeFile>nuget-readme.md</PackageReadmeFile>
     <PackageTags>pagmo;optimization;evolutionary;metaheuristic;SWIG</PackageTags>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>

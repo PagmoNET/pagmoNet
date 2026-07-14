@@ -1,12 +1,12 @@
 # PagmoNet4j
 
-Java and Kotlin bindings for [pagmo2](https://github.com/esa/pagmo2), part of the [PagmoNet](https://github.com/samthegliderpilot) family.
+Java and Kotlin bindings for [pagmo2](https://github.com/esa/pagmo2), part of the [PagmoNet](https://github.com/PagmoNET) family.
 
 ```kotlin
 // build.gradle.kts
 repositories {
     maven {
-        url = uri("https://maven.pkg.github.com/samthegliderpilot/PagmoNet4j")
+        url = uri("https://maven.pkg.github.com/PagmoNET/pagmoNet")
         credentials {
             username = providers.gradleProperty("gpr.user").orElse(System.getenv("GITHUB_ACTOR") ?: "").get()
             password = providers.gradleProperty("gpr.key").orElse(System.getenv("GITHUB_TOKEN") ?: "").get()
@@ -135,6 +135,6 @@ pagmo2 and NLopt are statically linked under the LGPL; you may modify them and r
 
 ## Related
 
-- [pagmo.NET](https://github.com/samthegliderpilot/pagmo.NET) — C# / .NET bindings
-- [pagmoNet](https://github.com/samthegliderpilot/pagmoNet) — shared SWIG + native bridge (monorepo root)
-- [PagmoNet4j.ipopt](https://github.com/samthegliderpilot/PagmoNet4j.ipopt) — IPOPT native runtime companion (bundles libipopt)
+- [pagmo.NET](https://github.com/PagmoNET/pagmoNet) — C# / .NET bindings
+- [pagmoNet](https://github.com/PagmoNET/pagmoNet) — shared SWIG + native bridge (monorepo root)
+- [PagmoNet4j.ipopt](https://github.com/PagmoNET/pagmoNet) — IPOPT native runtime companion (bundles libipopt)

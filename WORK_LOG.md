@@ -56,8 +56,11 @@ loaded with **no UnsatisfiedLinkError**, both clean-room solves passed (negative
 IPOPT solve); fresh jar has all classes under `io/github/pagmonet/pagmonet4j/`, zero `samthegliderpilot`.
 
 **Y-drive re-stage:** `Java-Linux/` refreshed — renamed jars + examples repackaged to the new package.
-**Open decision:** repo/publish URLs still point at `github.com/samthegliderpilot` — user's call whether
-to move the repos into the `pagmonet` org (would update POM `<url>`/`<scm>` + GH Packages targets).
+**Resolved 2026-07-13:** repo moved to the `PagmoNET` org monorepo `github.com/PagmoNET/pagmoNet`. All
+repo/publish URLs updated to it — GH Packages publish URLs (core/companion/kotlin-ext), POM
+`<url>`/`<scm>`/`issues`, C# `PackageProjectUrl`/`RepositoryUrl`, README/doc links, and the NuGet-readme
+logo (`raw.githubusercontent.com/PagmoNET/pagmoNet/main/pagmo.NET/logo_small.png`). Author id/name/email
++ `<Authors>`/`<Copyright>` deliberately kept as `samthegliderpilot`.
 
 ### Windows Java jars rebuilt (new namespace) — "last local build before publishing"
 User added JDK 21 at `C:\Programs\jdk-21` (also has jdk-25, but gradle toolchains match exact major →

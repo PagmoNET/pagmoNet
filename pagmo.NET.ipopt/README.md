@@ -1,6 +1,6 @@
 # Pagmo.NET.Ipopt
 
-The IPOPT (Interior Point OPTimizer) native runtime for [Pagmo.NET](https://github.com/samthegliderpilot/pagmo.NET). This is a **pure native payload**: it bundles the `libipopt` shared library and its dependency closure (MUMPS, OpenBLAS, the GCC runtime) and nothing else. The base `Pagmo.NET` package already contains the `ipopt` algorithm, which loads this library at runtime via `dlopen`; this package simply supplies it so the algorithm works out of the box.
+The IPOPT (Interior Point OPTimizer) native runtime for [Pagmo.NET](https://github.com/PagmoNET/pagmoNet). This is a **pure native payload**: it bundles the `libipopt` shared library and its dependency closure (MUMPS, OpenBLAS, the GCC runtime) and nothing else. The base `Pagmo.NET` package already contains the `ipopt` algorithm, which loads this library at runtime via `dlopen`; this package simply supplies it so the algorithm works out of the box.
 
 Add it **alongside** `Pagmo.NET` (this package depends on the base — you get both). If you would rather bring your own IPOPT (a system install, or the `PAGMONET_IPOPT_LIBRARY` override), use the base `Pagmo.NET` package on its own.
 
@@ -79,6 +79,6 @@ pagmo2 and NLopt (from the base package) are statically linked under the LGPL; y
 
 ## Related
 
-- [pagmo.NET](https://github.com/samthegliderpilot/pagmo.NET) — base C# bindings
-- [pagmoNet](https://github.com/samthegliderpilot/pagmoNet) — shared SWIG + native bridge
-- [PagmoNet4j.ipopt](https://github.com/samthegliderpilot/PagmoNet4j.ipopt) — Java/Kotlin equivalent
+- [pagmo.NET](https://github.com/PagmoNET/pagmoNet) — base C# bindings
+- [pagmoNet](https://github.com/PagmoNET/pagmoNet) — shared SWIG + native bridge
+- [PagmoNet4j.ipopt](https://github.com/PagmoNET/pagmoNet) — Java/Kotlin equivalent

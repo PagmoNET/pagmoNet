@@ -70,7 +70,7 @@ publishing {
         }
         maven {
             name = "GitHubPackages"
-            url = uri("https://maven.pkg.github.com/samthegliderpilot/PagmoNet4j.ipopt")
+            url = uri("https://maven.pkg.github.com/PagmoNET/pagmoNet")
             credentials {
                 username = System.getenv("GITHUB_ACTOR") ?: ""
                 password = System.getenv("GITHUB_TOKEN") ?: ""
@@ -84,7 +84,7 @@ publishing {
             pom {
                 name.set("pagmonet4j-ipopt")
                 description.set("IPOPT native runtime for PagmoNet4j: bundles libipopt and its dependency closure so pagmonet4j's built-in ipopt algorithm works out of the box. Add this alongside pagmonet4j.")
-                url.set("https://github.com/samthegliderpilot/PagmoNet4j.ipopt")
+                url.set("https://github.com/PagmoNET/pagmoNet")
                 licenses {
                     license {
                         name.set("EPL-2.0")
@@ -99,13 +99,13 @@ publishing {
                     }
                 }
                 scm {
-                    url.set("https://github.com/samthegliderpilot/PagmoNet4j.ipopt")
-                    connection.set("scm:git:git://github.com/samthegliderpilot/PagmoNet4j.ipopt.git")
-                    developerConnection.set("scm:git:ssh://github.com/samthegliderpilot/PagmoNet4j.ipopt.git")
+                    url.set("https://github.com/PagmoNET/pagmoNet")
+                    connection.set("scm:git:git://github.com/PagmoNET/pagmoNet.git")
+                    developerConnection.set("scm:git:ssh://github.com/PagmoNET/pagmoNet.git")
                 }
                 issueManagement {
                     system.set("GitHub")
-                    url.set("https://github.com/samthegliderpilot/PagmoNet4j.ipopt/issues")
+                    url.set("https://github.com/PagmoNET/pagmoNet/issues")
                 }
             }
         }

@@ -1,6 +1,6 @@
 # PagmoNet4j.ipopt
 
-The IPOPT (Interior Point OPTimizer) native runtime for [PagmoNet4j](https://github.com/samthegliderpilot/PagmoNet4j). This is a **pure native payload**: it bundles the `libipopt` shared library and its dependency closure (MUMPS, OpenBLAS, the GCC runtime) and nothing else. The base `pagmonet4j` artifact already contains the `ipopt` algorithm, which loads this library at runtime via `dlopen`; this artifact simply supplies it so the algorithm works out of the box.
+The IPOPT (Interior Point OPTimizer) native runtime for [PagmoNet4j](https://github.com/PagmoNET/pagmoNet). This is a **pure native payload**: it bundles the `libipopt` shared library and its dependency closure (MUMPS, OpenBLAS, the GCC runtime) and nothing else. The base `pagmonet4j` artifact already contains the `ipopt` algorithm, which loads this library at runtime via `dlopen`; this artifact simply supplies it so the algorithm works out of the box.
 
 Add it **alongside** `pagmonet4j` (this artifact depends on the base — you get both). If you would rather bring your own IPOPT (a system install, or the `PAGMONET_IPOPT_LIBRARY` override), use the base `pagmonet4j` artifact on its own.
 
@@ -19,7 +19,7 @@ Add the GitHub Packages repository and dependency to your `build.gradle.kts`:
 ```kotlin
 repositories {
     maven {
-        url = uri("https://maven.pkg.github.com/samthegliderpilot/PagmoNet4j.ipopt")
+        url = uri("https://maven.pkg.github.com/PagmoNET/pagmoNet")
         credentials {
             username = providers.gradleProperty("gpr.user").orElse(System.getenv("GITHUB_ACTOR") ?: "").get()
             password = providers.gradleProperty("gpr.key").orElse(System.getenv("GITHUB_TOKEN") ?: "").get()
@@ -74,6 +74,6 @@ This package is licensed under the **EPL-2.0**, matching IPOPT. See [LICENSE](LI
 
 ## Related
 
-- [PagmoNet4j](https://github.com/samthegliderpilot/PagmoNet4j) — base Java/Kotlin bindings
-- [pagmoNet](https://github.com/samthegliderpilot/pagmoNet) — shared SWIG + native bridge
-- [pagmo.NET.ipopt](https://github.com/samthegliderpilot/pagmo.NET.ipopt) — C# equivalent
+- [PagmoNet4j](https://github.com/PagmoNET/pagmoNet) — base Java/Kotlin bindings
+- [pagmoNet](https://github.com/PagmoNET/pagmoNet) — shared SWIG + native bridge
+- [pagmo.NET.ipopt](https://github.com/PagmoNET/pagmoNet) — C# equivalent

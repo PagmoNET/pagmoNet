@@ -1,6 +1,6 @@
 # Pagmo.NET
 
-![Pagmo.NET](https://raw.githubusercontent.com/samthegliderpilot/Pagmo.NET/main/logo_small.png)
+![Pagmo.NET](https://raw.githubusercontent.com/PagmoNET/pagmoNet/main/pagmo.NET/logo_small.png)
 
 **Pagmo.NET** is a C# wrapper for [pagmo2](https://esa.github.io/pagmo2/), a C++ library
 providing high-quality metaheuristic and gradient-based optimization algorithms with
@@ -128,7 +128,7 @@ MPL-2.0 package. Install the `Pagmo.NET.Ipopt` package to add it;
 **Where's SNOPT7?**
 SNOPT7 is proprietary and cannot be bundled. Users with a SNOPT7 license can build
 Pagmo.NET from source with SNOPT7 support — see the
-[repository README](https://github.com/samthegliderpilot/Pagmo.NET) for instructions.
+[repository README](https://github.com/PagmoNET/pagmoNet) for instructions.
 
 **Is this affiliated with ESA or the pagmo2 team?**
 No — Pagmo.NET is an independent .NET binding, not affiliated with ESA or the pagmo2
@@ -139,10 +139,10 @@ developers.
 Pagmo.NET is licensed under the **MPL-2.0**. It statically links third-party libraries
 under their own licenses (pagmo2 and NLopt under the LGPL, Boost under BSL-1.0, Intel
 oneTBB under Apache-2.0, Eigen3 under MPL-2.0). See
-[THIRD_PARTY_LICENSES.md](https://github.com/samthegliderpilot/Pagmo.NET/blob/main/THIRD_PARTY_LICENSES.md).
+[THIRD_PARTY_LICENSES.md](https://github.com/PagmoNET/pagmoNet/blob/main/THIRD_PARTY_LICENSES.md).
 
 ## Links
 
-- [Source repository](https://github.com/samthegliderpilot/Pagmo.NET)
+- [Source repository](https://github.com/PagmoNET/pagmoNet)
 - [pagmo2 documentation](https://esa.github.io/pagmo2/)
-- [Release notes](https://github.com/samthegliderpilot/Pagmo.NET/releases)
+- [Release notes](https://github.com/PagmoNET/pagmoNet/releases)

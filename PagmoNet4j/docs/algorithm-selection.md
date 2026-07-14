@@ -2,7 +2,7 @@
 
 This table maps each wrapped algorithm to its problem category. If you know what pagmo2 algorithm you want by name, find it here to get the PagmoNet4j class name and understand when to use it.
 
-The bindings are generated from the same shared SWIG layer as [pagmo.NET](https://github.com/samthegliderpilot/pagmo.NET), so the class names match pagmo2's C++ names directly (e.g. `de`, `nsga2`). Wrap the algorithm in an `algorithm` and pass a `problem` + `population` to `evolve` — see the [quickstart](../README.md#quickstart).
+The bindings are generated from the same shared SWIG layer as [pagmo.NET](https://github.com/PagmoNET/pagmoNet), so the class names match pagmo2's C++ names directly (e.g. `de`, `nsga2`). Wrap the algorithm in an `algorithm` and pass a `problem` + `population` to `evolve` — see the [quickstart](../README.md#quickstart).
 
 ## Single-objective, continuous, unconstrained
 

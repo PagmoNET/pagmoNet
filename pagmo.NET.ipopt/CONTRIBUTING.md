@@ -16,7 +16,7 @@ closure, which the base loads at runtime via `dlopen`. So most changes here are 
 ## Cloning
 
 ```powershell
-git clone https://github.com/samthegliderpilot/pagmoNet
+git clone https://github.com/PagmoNET/pagmoNet
 ```
 
 No submodules — the shared `native/` + `swig/` layer and all four sub-projects live in the one repo.

@@ -14,7 +14,7 @@ wrapper for Java is built under `PagmoNet4j/pagmoWrapper/`. The commands below a
 ## Cloning
 
 ```powershell
-git clone https://github.com/samthegliderpilot/pagmoNet
+git clone https://github.com/PagmoNET/pagmoNet
 ```
 
 No submodules — the shared `native/` + `swig/` layer and all four sub-projects are in the one repo.

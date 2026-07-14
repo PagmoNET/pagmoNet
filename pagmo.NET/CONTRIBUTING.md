@@ -17,7 +17,7 @@ commands below are run from that root.
 ## Cloning
 
 ```powershell
-git clone https://github.com/samthegliderpilot/pagmoNet
+git clone https://github.com/PagmoNET/pagmoNet
 ```
 
 No submodules — `native/`, `swig/`, and all four sub-projects are in the one repo.

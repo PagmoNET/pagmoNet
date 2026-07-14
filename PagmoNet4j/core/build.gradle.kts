@@ -109,7 +109,7 @@ publishing {
         }
         maven {
             name = "GitHubPackages"
-            url = uri("https://maven.pkg.github.com/samthegliderpilot/PagmoNet4j")
+            url = uri("https://maven.pkg.github.com/PagmoNET/pagmoNet")
             credentials {
                 username = System.getenv("GITHUB_ACTOR") ?: ""
                 password = System.getenv("GITHUB_TOKEN") ?: ""
@@ -123,7 +123,7 @@ publishing {
             pom {
                 name.set("pagmonet4j")
                 description.set("Java/Kotlin bindings for pagmo2 — multi-island metaheuristic optimization")
-                url.set("https://github.com/samthegliderpilot/pagmonet4j")
+                url.set("https://github.com/PagmoNET/pagmoNet")
                 licenses {
                     license {
                         name.set("MPL-2.0")

@@ -16,7 +16,7 @@ The NuGet package is self-contained — native runtime libraries for Windows x64
 macOS (universal binary) are bundled in `runtimes/`. No additional installation required.
 
 Source archives and individual native bundles are available at
-`https://github.com/samthegliderpilot/Pagmo.NET/releases`.
+`https://github.com/PagmoNET/pagmoNet/releases`.
 
 ---
 

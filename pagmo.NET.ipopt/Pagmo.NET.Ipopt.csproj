@@ -33,8 +33,8 @@
     <PackageId>Pagmo.NET.Ipopt</PackageId>
     <Description>IPOPT native runtime for Pagmo.NET: bundles libipopt and its dependency closure (MUMPS, OpenBLAS, GCC runtime) so Pagmo.NET's built-in `ipopt` algorithm works out of the box. Add this alongside Pagmo.NET.</Description>
     <PackageLicenseExpression>EPL-2.0</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/samthegliderpilot/pagmo.NET.ipopt</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/samthegliderpilot/pagmo.NET.ipopt</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/PagmoNET/pagmoNet</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/PagmoNET/pagmoNet</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <Authors>samthegliderpilot</Authors>
     <Copyright>Copyright © samthegliderpilot</Copyright>
