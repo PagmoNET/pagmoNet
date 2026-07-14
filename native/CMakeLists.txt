@@ -88,14 +88,19 @@ target_link_libraries(PagmoWrapper PRIVATE
     ${CMAKE_DL_LIBS}   # dlopen/dlsym for deferred_ipopt on Unix; no-op on Windows
 )
 
-# Pagmo::pagmo exports PAGMO_WITH_NLOPT/IPOPT as INTERFACE compile definitions
-# reflecting how upstream pagmo was built, not what we have available. Explicitly
-# undefine them so our wrapper only enables optional-solver code when we have
-# verified the solver is present (PAGMONET_WITH_* options below).
+# Pagmo::pagmo exports PAGMO_WITH_NLOPT/IPOPT as INTERFACE compile definitions reflecting how upstream
+# pagmo was built, not what we have available. Strip them so our wrapper only enables optional-solver
+# code when we have verified the solver is present.
+#
+# IPOPT is always stripped (it is deferred-load; we never compile against pagmo's ipopt.hpp). NLopt is
+# stripped CONDITIONALLY in the PAGMONET_WITH_NLOPT block below -- NOT here. A compile OPTION (/U) is
+# emitted AFTER -D definitions on the command line, so undefining NLopt here would override the
+# re-enable define and silently compile NLopt out even when PAGMONET_WITH_NLOPT=ON (the shipped-base
+# bug where NLopt reported unavailable). MSVC warns D9025 for exactly this override.
 if(MSVC)
-    target_compile_options(PagmoWrapper PRIVATE /UPAGMO_WITH_NLOPT /UPAGMO_WITH_IPOPT /bigobj)
+    target_compile_options(PagmoWrapper PRIVATE /UPAGMO_WITH_IPOPT /bigobj)
 else()
-    target_compile_options(PagmoWrapper PRIVATE -UPAGMO_WITH_NLOPT -UPAGMO_WITH_IPOPT)
+    target_compile_options(PagmoWrapper PRIVATE -UPAGMO_WITH_IPOPT)
 endif()
 
 # Platform-specific library properties.
@@ -128,6 +133,14 @@ if(PAGMONET_WITH_NLOPT)
     find_package(NLopt CONFIG REQUIRED)
     target_compile_definitions(PagmoWrapper PRIVATE PAGMO_WITH_NLOPT)
     target_link_libraries(PagmoWrapper PRIVATE NLopt::nlopt)
+else()
+    # Strip pagmo's exported PAGMO_WITH_NLOPT only when we are NOT linking NLopt ourselves. Kept out of
+    # the unconditional block above so it can never override the re-enable define (see the note there).
+    if(MSVC)
+        target_compile_options(PagmoWrapper PRIVATE /UPAGMO_WITH_NLOPT)
+    else()
+        target_compile_options(PagmoWrapper PRIVATE -UPAGMO_WITH_NLOPT)
+    endif()
 endif()
 
 # (No IPOPT link block: the ipopt algorithm reaches IPOPT at runtime via dlopen, so there

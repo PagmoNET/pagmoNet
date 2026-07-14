@@ -18,6 +18,11 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);CS8981;CS1591</NoWarn>
     <Platforms>x64</Platforms>
+    <!-- The MANAGED assembly must be AnyCPU so it loads in an arm64 process (e.g. Apple Silicon).
+         Packing with -p:Platform=x64 would otherwise mark it x64-only and fail with CS8012 /
+         FileNotFoundException on osx-arm64. The architecture-specific part is the native wrapper,
+         which is selected per-RID at runtime; the managed layer is portable IL. -->
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <!-- MSBuild vcxproj output (legacy dev builds without vcpkg) -->
     <PagmoWrapperBinDir>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\..\pagmoWrapper\pagmoWrapper\bin'))</PagmoWrapperBinDir>
     <!-- cmake static build output (x64-windows-static-md, produced by build-native.ps1 with vcpkg) -->

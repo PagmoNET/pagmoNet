@@ -89,6 +89,26 @@ try {
         throw "build-native.ps1 failed ($LASTEXITCODE)."
     }
 
+    # dotnet pack (below) packs the native from pagmo.NET/pagmoWrapper/{win-build,build} per the csproj
+    # <None Include> items. build-native.ps1 writes it to the shared native/ dir instead, so stage a
+    # copy where the csproj looks (mirrors build-linux-artifacts.sh). WITHOUT this the nupkg ships with
+    # NO native library and every solver -- even statically-linked NLopt -- reports unavailable on a
+    # clean machine.
+    Write-Host "==> Staging native into pagmoWrapper/ for pack"
+    if ($IsLinux -or $IsMacOS) {
+        $stageSrc = Join-Path $pagmoNetRoot "native/build"
+        $stageDst = Join-Path $repoRoot "pagmoWrapper/build"
+        New-Item -ItemType Directory -Force -Path $stageDst | Out-Null
+        Get-ChildItem -Path $stageSrc -File -Filter "libPagmoWrapper.*" | ForEach-Object {
+            Copy-Item $_.FullName (Join-Path $stageDst $_.Name) -Force
+        }
+    } else {
+        $stageSrc = Join-Path $pagmoNetRoot "native/win-build/PagmoWrapper.dll"
+        $stageDst = Join-Path $repoRoot "pagmoWrapper/win-build"
+        New-Item -ItemType Directory -Force -Path $stageDst | Out-Null
+        Copy-Item $stageSrc (Join-Path $stageDst "PagmoWrapper.dll") -Force
+    }
+
     Write-Host "==> Packing NuGet package"
     dotnet pack (Join-Path $repoRoot "Pagmo.NET/Pagmo.NET.csproj") `
         -c $Configuration `

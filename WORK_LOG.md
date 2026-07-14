@@ -4,6 +4,45 @@ Active journal for cross-session / cross-device continuity. Newest session on to
 
 ---
 
+## 2026-07-13/14 — rc.1 release path: many latent bugs (never ran end-to-end post-monorepo)
+
+Tagging v1.0.0-rc.1 surfaced a stack of latent release-only bugs (the release path was never green since
+the monorepo consolidation; each fix uncovered the next). Nothing published at any point (all failed
+before their publish steps). Fixes, in order found:
+
+1. **C# native path** (`pagmo.NET/scripts/build-release-artifacts.ps1`): looked for the wrapper at the
+   old submodule path `pagmo.NET/pagmoNet/native`; monorepo has it at `<root>/native`. Added a
+   submodule-or-monorepo probe (`$pagmoNetRoot`). *(committed f43780f)*
+2. **gradlew not executable**: both `gradlew` committed `100644`; CI `./gradlew` → exit 126. Set git
+   `+x` (`git update-index --chmod=+x`). *(committed f43780f)*
+3. **C# nupkg shipped NO native**: the csproj packs the native from `pagmo.NET/pagmoWrapper/{win-build,
+   build}`, but `build-native.ps1` writes it to `<root>/native/...`. The local build script bridges
+   this with a copy; the release script didn't → nupkg had no wrapper → even NLopt reported
+   unavailable. Added the stage-copy to build-release-artifacts.ps1 (mirrors build-linux-artifacts.sh).
+4. **C# managed assembly was x64-only** (`-p:Platform=x64` → Machine=Amd64) → `CS8012` /
+   FileNotFoundException on osx-arm64. Set `<PlatformTarget>AnyCPU</PlatformTarget>` in Pagmo.NET.csproj.
+5. **C# NLopt compiled OUT** (`native/CMakeLists.txt`): `/UPAGMO_WITH_NLOPT` was a compile OPTION,
+   emitted AFTER the re-enable `-D` define, so `/U` always won (MSVC D9025) and `nloptGenerated.cxx`
+   (guarded by `#if defined(PAGMO_WITH_NLOPT)`) compiled empty. Only an incremental build's cached
+   .obj masked it. Fix: strip NLopt only in the `else` of `PAGMONET_WITH_NLOPT` (IPOPT still always
+   stripped). **Java wrapper is NOT affected** — its SWIG NLopt binding is unguarded, confirmed present
+   on a clean build.
+6. **Java clean-room workflow**: `chmod +x gradlew` / `./gradlew` ran from repo root (gradlew is in
+   `PagmoNet4j/`) → "No such file"; and neither base nor ipopt cleanroom passed `-PlocalRepo`, so the
+   default `../localrepo` missed the artifact at `<root>/localrepo`. Fixed both `release-java.yml` and
+   `release-java-ipopt.yml` to use `./PagmoNet4j[.ipopt]/gradlew` + `-PlocalRepo="$PWD/localrepo"`.
+
+**Verified locally (clean Windows build of build-release-artifacts.ps1):** native IS in the nupkg
+(`runtimes/win-x64/native/PagmoWrapper.dll`), NLopt export present with **zero D9025**, managed
+Pagmo.NET.dll is **AnyCPU** (PE Machine=I386, CorFlags=ILOnly). Clean Java native build keeps its NLopt
+binding. NOT locally verified: the Java clean-room end-to-end and the macOS universal-dylib injection
+(CI will show these; mac native uses a separate release-workflow inject step at runtimes/osx/native).
+
+Pending commit (round 2): build-release-artifacts.ps1 (copy), Pagmo.NET.csproj (AnyCPU),
+native/CMakeLists.txt (NLopt), release-java.yml + release-java-ipopt.yml (cleanroom). Then re-tag rc.1.
+
+---
+
 ## 2026-07-13 — OpenBLAS dedup (replaces the "hacking in a fix" libblas commit)
 
 The earlier libblas fix (commit `0bfff9f`) bundled every DT_NEEDED name, which was correct but shipped

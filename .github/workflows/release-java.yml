@@ -79,9 +79,9 @@ jobs:
       - name: Resolve pagmonet4j + run NLopt solve (no PAGMO4J_NATIVE_DIR, no conda)
         shell: bash
         run: |
-          chmod +x gradlew
-          ./gradlew --no-daemon -p PagmoNet4j/cleanroom run \
-            -PpagmoVersion=${{ needs.meta.outputs.version }}
+          ./PagmoNet4j/gradlew --no-daemon -p PagmoNet4j/cleanroom run \
+            -PpagmoVersion=${{ needs.meta.outputs.version }} \
+            -PlocalRepo="$PWD/localrepo"
 
   # ── Publish: only after the clean-room gate passes ────────────────────────
   publish:

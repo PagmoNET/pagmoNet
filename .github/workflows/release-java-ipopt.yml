@@ -263,15 +263,16 @@ jobs:
         env:
           PAGMONET_CLEANROOM_EXPECT: absent
         run: |
-          chmod +x PagmoNet4j.ipopt/gradlew
           ./PagmoNet4j.ipopt/gradlew --no-daemon -p PagmoNet4j.ipopt/cleanroom run \
-            -PpagmoIpoptVersion=${{ needs.meta.outputs.version }} -PpagmoBaseOnly=true
+            -PpagmoIpoptVersion=${{ needs.meta.outputs.version }} -PpagmoBaseOnly=true \
+            -PlocalRepo="$PWD/localrepo"
 
       - name: Resolve pagmonet4j-ipopt + base, run IPOPT solve (offline — no GitHub Packages, no conda)
         shell: bash
         run: |
           ./PagmoNet4j.ipopt/gradlew --no-daemon -p PagmoNet4j.ipopt/cleanroom run \
-            -PpagmoIpoptVersion=${{ needs.meta.outputs.version }}
+            -PpagmoIpoptVersion=${{ needs.meta.outputs.version }} \
+            -PlocalRepo="$PWD/localrepo"
 
   # ── Publish: only after the clean-room gate passes ────────────────────────
   publish:
