@@ -129,10 +129,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - runner: macos-14   # Apple Silicon
+          - runner: macos-14   # Apple Silicon (native)
             rid: osx-arm64
-          - runner: macos-13   # Intel
+            subdir: osx-arm64
+          - runner: macos-14   # Apple Silicon, cross-fetch the Intel conda closure (no scarce Intel runner)
             rid: osx-x64
+            subdir: osx-64
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
@@ -140,8 +142,11 @@ jobs:
       - name: Install PowerShell + micromamba
         run: brew install powershell micromamba
 
+      # --platform lets an arm64 runner solve+download the Intel (osx-64) closure. bundle-native-deps.ps1
+      # only inspects/rewrites Mach-O (otool / install_name_tool / codesign) -- never executes it -- so a
+      # cross-arch payload assembles fine, and we never depend on GitHub's scarce Intel macOS runners.
       - name: Install IPOPT runtime (macOS via conda-forge, OpenBLAS)
-        run: micromamba create -c conda-forge -p $HOME/ipopt-env ipopt nomkl -y
+        run: micromamba create --platform ${{ matrix.subdir }} -c conda-forge -p $HOME/ipopt-env ipopt nomkl -y
 
       - name: Bundle libipopt + dependency closure (@loader_path + ad-hoc sign)
         run: |
@@ -234,8 +239,9 @@ jobs:
             rid: linux-x64
           - runner: macos-14
             rid: osx-arm64
-          - runner: macos-13
-            rid: osx-x64
+          # No osx-x64 clean-room leg: GitHub's Intel macOS runners are scarce/queue-limited, and the
+          # x64 payload is cross-fetched + shipped by the build. Native-Intel RUNTIME validation is
+          # deferred (manual / a 1.0.x point release if an Intel-only issue ever surfaces).
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4

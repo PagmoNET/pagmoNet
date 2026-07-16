@@ -4,6 +4,35 @@ Active journal for cross-session / cross-device continuity. Newest session on to
 
 ---
 
+## 2026-07-15 — Kill the Intel-macOS-runner dependency (rc1 kept dying at the 24h queue limit)
+
+rc1 went green on everything EXCEPT the `macos-13` (Intel) legs, which sat unscheduled and got
+cancelled at GitHub's 24h job-queue cap → `publish` (gated on the full matrix) never ran. GitHub is
+starving Intel macOS capacity, so "wait for a runner" isn't a dependable release mechanism. Removed the
+release path's dependence on Intel runners entirely, WITHOUT dropping x86 *support*:
+
+- **Base native was already fine** — `_build-base-*.yml build-macos` runs on `macos-latest` (arm64),
+  builds the arm64 slice, cross-builds the x86_64 slice (`-DCMAKE_OSX_ARCHITECTURES=x86_64` +
+  `x64-osx-static-pic`), and `lipo`s a universal binary. No Intel runner. (Was green in rc1.)
+- **Companion payload (`native-macos` in both `-ipopt` workflows):** the `osx-x64` leg moved from
+  `macos-13` → `macos-14` with `micromamba create --platform osx-64` (cross-fetch the Intel conda
+  closure on an arm64 host). Safe because bundle-native-deps.ps1's macOS path only *inspects/rewrites*
+  Mach-O (otool / install_name_tool / codesign) — it never executes the dylibs.
+- **Clean-room `osx-x64` legs (4 matrices: base + companion, C# + Java):** dropped. The x64 slice is
+  built+shipped, but native-Intel *runtime* validation is deferred to manual / a 1.0.x point release
+  (user accepted: true Intel-only glitches are rare). Everything now runs on
+  windows-latest/ubuntu-latest/macos-14 only — zero `macos-13` in the release path.
+
+**Verified:** no `macos-13` left in release workflows; all 4 parse; base cross-compile already proven.
+**NOT locally verifiable (no Mac) — watch on the next rc1 run:** the companion cross-conda
+(`--platform osx-64` solve on arm64 + bundling osx-64 dylibs). Low risk (standard conda cross-platform
++ Mach-O-only tooling), but it's the one genuinely new mechanism. Build CI (`build-*.yml`) still
+references `macos-13` for its own tests — left as-is; the release is what needed to be runner-independent.
+
+Pending commit: the 4 `release-*.yml`. Then re-tag rc1 — should now complete end-to-end.
+
+---
+
 ## 2026-07-13/14 — rc.1 release path: many latent bugs (never ran end-to-end post-monorepo)
 
 Tagging v1.0.0-rc.1 surfaced a stack of latent release-only bugs (the release path was never green since

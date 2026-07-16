@@ -59,8 +59,9 @@ jobs:
             rid: linux-x64
           - runner: macos-14
             rid: osx-arm64
-          - runner: macos-13
-            rid: osx-x64
+          # No osx-x64 clean-room leg: GitHub's Intel macOS runners are scarce/queue-limited, and the
+          # x64 slice is cross-compiled + shipped by the build. Native-Intel RUNTIME validation is
+          # deferred (manual / a 1.0.x point release if an Intel-only issue ever surfaces).
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
