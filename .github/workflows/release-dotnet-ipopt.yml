@@ -299,6 +299,8 @@ jobs:
   publish:
     needs: [meta, pack, cleanroom]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # gh release create needs write; NuGet push uses NUGET_API_KEY, not the token
     steps:
       - uses: actions/checkout@v4
 
