@@ -132,8 +132,14 @@ jobs:
 
       - name: Push to NuGet.org
         if: ${{ github.event_name == 'push' || inputs.dry_run == false }}
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
         run: |
+          if [ -z "$NUGET_API_KEY" ]; then
+            echo "::error::NUGET_API_KEY is empty/unset for this repo. Add it under the org/repo Settings > Secrets and variables > Actions." >&2
+            exit 1
+          fi
           dotnet nuget push "nuget/Pagmo.NET.${{ needs.meta.outputs.version }}.nupkg" \
-            --api-key ${{ secrets.NUGET_API_KEY }} \
+            --api-key "$NUGET_API_KEY" \
             --source https://api.nuget.org/v3/index.json \
             --skip-duplicate
