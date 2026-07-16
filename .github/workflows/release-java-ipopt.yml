@@ -304,12 +304,16 @@ jobs:
           path: PagmoNet4j.ipopt/staged-natives
           merge-multiple: true
 
-      - name: Create GitHub Release
+      - name: Create GitHub Release if absent
         if: ${{ github.event_name == 'push' || inputs.dry_run == false }}
         run: |
-          gh release create "${{ github.ref_name }}" \
-            --title "PagmoNet4j.ipopt ${{ github.ref_name }}" \
-            --notes-file PagmoNet4j.ipopt/CHANGELOG.md
+          TAG="${{ github.ref_name }}"
+          # The payload jar goes to GitHub Packages; this just ensures the shared Release marker exists.
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" \
+              --title "pagmoNet $TAG" \
+              --notes-file pagmo.NET/RELEASE_NOTES.md
+          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

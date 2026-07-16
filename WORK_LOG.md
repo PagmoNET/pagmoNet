@@ -4,6 +4,26 @@ Active journal for cross-session / cross-device continuity. Newest session on to
 
 ---
 
+## 2026-07-15 (later) — rc1 reached publish (mac fix worked!); two GitHub-Release bugs; going to rc2
+
+The arm64-only mac change worked — rc1 built + clean-roomed all platforms with no Intel-runner hang,
+and reached the publish step. Then:
+- **`release-dotnet.yml` `gh release create` referenced `pagmo.NET/CHANGELOG.md`** (doesn't exist; only
+  `pagmo.NET/RELEASE_NOTES.md` does) → failed before the NuGet push, so **.NET never published**.
+- **Multi-workflow race:** three workflows each `gh release create` the SAME tag, but a tag can only
+  have one Release → "already exists" failures. **Partial publish:** Java publishes to GitHub Packages
+  independently of the .NET failure, so **pagmonet4j / pagmonet4j-ipopt rc1 DID go out** (confirmed by
+  user) — which is why we move to **rc2** rather than reuse rc1 (GitHub Packages is immutable).
+
+**Fix:** all three `gh release create` → idempotent "create-if-absent, else `gh release upload
+--clobber`", single shared Release per monorepo tag, title `pagmoNet <tag>`, notes from the existing
+`pagmo.NET/RELEASE_NOTES.md`. (RELEASE_NOTES.md content is stale/beta — attaches fine, worth refreshing
+before the real 1.0, not a blocker.) Pending commit: release-dotnet.yml, release-dotnet-ipopt.yml,
+release-java-ipopt.yml. Then tag **v1.0.0-rc.2** (fresh version, no tag-delete needed; rc1's orphaned
+Java packages + Release are harmless).
+
+---
+
 ## 2026-07-15 — Kill the Intel-macOS-runner dependency (rc1 kept dying at the 24h queue limit)
 
 rc1 went green on everything EXCEPT the `macos-13` (Intel) legs, which sat unscheduled and got
