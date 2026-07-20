@@ -76,8 +76,8 @@ dotnet test Tests/Tests.Pagmo.NET/Tests.Pagmo.NET.csproj -p:Platform=x64
 dotnet run --project Examples/Examples.Pagmo.NET/Examples.Pagmo.NET.csproj -- all
 ```
 
-> **Note on .NET SDK:** The library targets `net8.0`. Tests and examples target `net10.0`
-> because the .NET 8 VsTest runner on Linux only discovers ~198 of 593 tests due to a known
+> **Note on .NET SDK:** The library and the example target `net8.0`; the **test** project targets
+> `net10.0` because the .NET 8 VsTest runner on Linux only discovers ~198 of 593 tests due to a known
 > discovery issue. Consumers can reference the package from any .NET 8+ project.
 
 ### macOS (arm64 + x86_64)
@@ -186,12 +186,15 @@ No — Pagmo.NET is an independent .NET binding.
 
 ## Runnable examples
 
+The example project references the **published** `Pagmo.NET.Ipopt` package, so it needs no build
+toolchain — `dotnet run` restores the managed library and the native runtime straight from NuGet:
+
 ```bash
 dotnet run --project Examples/Examples.Pagmo.NET/Examples.Pagmo.NET.csproj -- all
 ```
 
-Scenarios: `single`, `archipelago`, `policies`, `maneuver`. Add `--verbose` to print
-algorithm logs.
+Scenarios: `single`, `archipelago`, `policies`, `maneuver`, `cloning`, `ipopt`. Add `--verbose`
+to print algorithm logs.
 
 Concept-first walkthroughs in `docs/`:
 - `docs/getting-started.md`

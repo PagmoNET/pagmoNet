@@ -2,31 +2,23 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net10.0</TargetFramework>
-    <PlatformTarget>x64</PlatformTarget>
-    <Platforms>x64</Platforms>
+    <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <PagmoWrapperBinDir>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\..\..\pagmoWrapper\pagmoWrapper\bin'))</PagmoWrapperBinDir>
-    <PagmoWrapperCmakeBuildDir>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\..\..\pagmoWrapper\build'))</PagmoWrapperCmakeBuildDir>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Pagmo.NET\Pagmo.NET.csproj" />
+    <!-- References the PUBLISHED companion package from NuGet.org. It pulls in the base Pagmo.NET
+         automatically AND supplies the native IPOPT runtime, so `dotnet run` restores everything
+         (managed + native) with no build toolchain, vcpkg, or cmake.
+
+         To see the graceful "IPOPT not available" path instead, swap this for the base package:
+             <PackageReference Include="Pagmo.NET" Version="*-*" />
+         The "ipopt" scenario then prints a friendly note and skips; every other scenario still runs.
+
+         Version "*-*" floats to the newest published release (incl. prereleases), so it never needs
+         bumping. Pin it to an explicit version like "1.0.0" for a reproducible build. -->
+    <PackageReference Include="Pagmo.NET.Ipopt" Version="*-*" />
   </ItemGroup>
-
-  <!-- Windows: copy native DLLs from vcxproj output (legacy dev builds). -->
-  <Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(OS)' == 'Windows_NT' And Exists('$(PagmoWrapperBinDir)')">
-    <Exec Command="xcopy /Y /I /E &quot;$(PagmoWrapperBinDir)\*&quot; &quot;$(TargetDir)&quot;" />
-  </Target>
-
-  <!-- Linux: copy libPagmoWrapper.so from cmake build output. -->
-  <Target Name="PostBuildLinux" AfterTargets="PostBuildEvent"
-          Condition="'$(OS)' != 'Windows_NT' And Exists('$(PagmoWrapperCmakeBuildDir)')">
-    <ItemGroup>
-      <_NativeLibs Include="$(PagmoWrapperCmakeBuildDir)/libPagmoWrapper.*" />
-    </ItemGroup>
-    <Copy SourceFiles="@(_NativeLibs)" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
-  </Target>
 
 </Project>

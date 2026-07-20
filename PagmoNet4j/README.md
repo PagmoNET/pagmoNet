@@ -63,13 +63,26 @@ pagmo2 algorithm to its problem category.
 
 ## Running the examples
 
-Six example scenarios are included:
+The examples resolve the **published** `pagmonet4j` packages from GitHub Packages — no native build
+required. GitHub Packages needs a token even for *public* packages, so there's a one-time step:
+
+1. Create a GitHub Personal Access Token (classic) with the **`read:packages`** scope.
+2. Add it to `~/.gradle/gradle.properties` (create the file if needed):
+   ```properties
+   gpr.user=YOUR_GITHUB_USERNAME
+   gpr.token=YOUR_read_packages_PAT
+   ```
+   (or set the `GITHUB_ACTOR` / `GITHUB_TOKEN` environment variables instead).
+
+Then run any scenario:
 
 ```bash
 ./gradlew :examples:run --args single      # single-island DE
 ./gradlew :examples:run --args archipelago # multi-island parallel evolution
 ./gradlew :examples:run --args policies    # migration policies
+./gradlew :examples:run --args maneuver    # constrained orbital-transfer problem
 ./gradlew :examples:run --args cloning     # thread-safe problem cloning
+./gradlew :examples:run --args ipopt       # IPOPT gradient-based solve
 ./gradlew :examples:run --args kotlin      # Kotlin DSL
 ./gradlew :examples:run --args all         # all of the above
 ```
