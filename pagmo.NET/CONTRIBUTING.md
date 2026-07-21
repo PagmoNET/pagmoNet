@@ -76,6 +76,30 @@ pagmoNet/
   PagmoNet4j.ipopt/   Java IPOPT companion payload
 ```
 
+## VS Code workflow
+
+The repo includes tasks and launch configs in `.vscode/`:
+
+- `Pagmo.NET: regenerate SWIG wrappers`
+- `Pagmo.NET: build native (Debug x64)`
+- `Pagmo.NET: build tests (Debug x64)`
+- `Pagmo.NET: build examples (Debug x64)`
+- `Pagmo.NET: test (Debug x64)`
+- `Pagmo.NET: Run Tests` (launch config)
+- `Pagmo.NET: Debug Examples` (launch config)
+
+**Windows requirements:** Visual Studio Build Tools 2022, .NET 10 SDK, PowerShell Core, vcpkg,
+VS Code extensions: `ms-dotnettools.csharp`, `ms-dotnettools.csdevkit`, `ms-vscode.cpptools`,
+`ms-vscode.powershell`.
+
+**Linux requirements:** cmake, build-essential, swig, vcpkg, .NET 10 SDK, PowerShell Core, same
+VS Code extensions. Build the native library first before using VS Code tasks.
+
+**C++ include path resolution for `pagmoWrapper.vcxproj`:**
+- `PagmoVcpkgInstalledDir` MSBuild property (preferred), or
+- `VCPKG_INSTALLED_DIR` environment variable, or
+- repo-relative fallback: `$(SolutionDir)..\\vcpkg\\installed`
+
 ## Pull requests
 
 - Keep PRs focused — one concern per PR

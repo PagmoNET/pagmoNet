@@ -15,123 +15,27 @@ dotnet add package Pagmo.NET --version 1.0.0
 The NuGet package is self-contained — native runtime libraries for Windows x64, Linux x64, and
 macOS (universal binary) are bundled in `runtimes/`. No additional installation required.
 
+For the built-in `ipopt` gradient-based solver, also add the companion native-runtime package:
+
+```
+dotnet add package Pagmo.NET.Ipopt --version 1.0.0
+```
+
+The base `Pagmo.NET` already contains the `ipopt` algorithm — it loads `libipopt` at runtime via
+`dlopen`, so no IPOPT is linked into the (MPL-2.0) base. `Pagmo.NET.Ipopt` bundles a `libipopt` for
+every platform; alternatively install IPOPT system-wide or point `PAGMONET_IPOPT_LIBRARY` at one.
+Without it, `ipopt` reports unavailable — check `OptionalSolverAvailability.IsIpoptAvailable` first.
+
 Source archives and individual native bundles are available at
 `https://github.com/PagmoNET/pagmoNet/releases`.
 
 ---
 
-## Build requirements (contributors / from source)
+## Building from source
 
-### Windows x64
-
-- .NET 10 SDK
-- Visual Studio 2022 / Build Tools 2022 (C++ toolchain)
-- SWIG 4.4.x (for wrapper regeneration only — pre-generated wrappers are checked in)
-- vcpkg with pagmo2: `vcpkg install pagmo2[nlopt]:x64-windows-static-md`
-
-To regenerate SWIG wrappers after editing the interface file:
-
-```powershell
-pwsh createSwigWrappersAndPlaceThem.ps1
-```
-
-SWIG is resolved via `SWIG_EXE` env var, `SWIG_HOME`, or `PATH`.
-
-### Linux x64
-
-The native library statically links pagmo2, Boost.Serialization, TBB, and NLopt
-via vcpkg's `x64-linux-static-pic` triplet — `libPagmoWrapper.so` has no system runtime
-dependencies beyond the standard C++ runtime. (IPOPT is not part of the base package; it
-ships in the separate `Pagmo.NET.Ipopt` package.)
-
-**One-time setup:**
-
-```bash
-# Build tools, SWIG, and .NET
-sudo apt install -y cmake build-essential swig
-
-# .NET 10 SDK
-sudo tee /etc/apt/preferences.d/dotnet-ubuntu << 'EOF'
-Package: dotnet* aspnetcore*
-Pin: release o=Ubuntu
-Pin-Priority: 1001
-EOF
-sudo apt update && sudo apt install -y dotnet-sdk-10.0
-
-# PowerShell Core
-wget -q https://packages.microsoft.com/config/ubuntu/24.04/packages-microsoft-prod.deb -O ms-prod.deb
-sudo dpkg -i ms-prod.deb && sudo apt update && sudo apt install -y powershell
-
-# vcpkg
-git clone https://github.com/microsoft/vcpkg ~/vcpkg
-~/vcpkg/bootstrap-vcpkg.sh
-export VCPKG_ROOT=~/vcpkg   # add to ~/.bashrc or ~/.profile
-```
-
-**Build and test:**
-
-```bash
-pwsh scripts/build-native.ps1 -Configuration Debug
-dotnet test Tests/Tests.Pagmo.NET/Tests.Pagmo.NET.csproj -p:Platform=x64
-dotnet run --project Examples/Examples.Pagmo.NET/Examples.Pagmo.NET.csproj -- all
-```
-
-> **Note on .NET SDK:** The library and the example target `net8.0`; the **test** project targets
-> `net10.0` because the .NET 8 VsTest runner on Linux only discovers ~198 of 593 tests due to a known
-> discovery issue. Consumers can reference the package from any .NET 8+ project.
-
-### macOS (arm64 + x86_64)
-
-The native library statically links pagmo2, Boost.Serialization, TBB, and NLopt via vcpkg
-(IPOPT support is planned). The release workflow combines arm64 and x86_64 slices into a
-universal binary with `lipo`.
-
-**One-time setup:**
-
-```bash
-brew install cmake autoconf autoconf-archive automake libtool swig
-brew install powershell/tap/powershell
-brew install --cask dotnet-sdk
-
-# vcpkg
-git clone https://github.com/microsoft/vcpkg ~/vcpkg
-~/vcpkg/bootstrap-vcpkg.sh
-export VCPKG_ROOT=~/vcpkg   # add to ~/.zshrc or ~/.bash_profile
-```
-
-**Build and test:**
-
-```bash
-pwsh scripts/build-native.ps1 -Configuration Debug
-dotnet test Tests/Tests.Pagmo.NET/Tests.Pagmo.NET.csproj -p:Platform=x64
-dotnet run --project Examples/Examples.Pagmo.NET/Examples.Pagmo.NET.csproj -- all
-```
-
----
-
-## VS Code workflow
-
-Repo includes tasks and launch configs in `.vscode/`:
-
-- `Pagmo.NET: regenerate SWIG wrappers`
-- `Pagmo.NET: build native (Debug x64)`
-- `Pagmo.NET: build tests (Debug x64)`
-- `Pagmo.NET: build examples (Debug x64)`
-- `Pagmo.NET: test (Debug x64)`
-- `Pagmo.NET: Run Tests` (launch config)
-- `Pagmo.NET: Debug Examples` (launch config)
-
-**Windows requirements:** Visual Studio Build Tools 2022, .NET 10 SDK, PowerShell Core,
-vcpkg, VS Code extensions: `ms-dotnettools.csharp`, `ms-dotnettools.csdevkit`,
-`ms-vscode.cpptools`, `ms-vscode.powershell`
-
-**Linux requirements:** cmake, build-essential, swig, vcpkg, .NET 10 SDK, PowerShell Core,
-same VS Code extensions. Build the native library first before using VS Code tasks.
-
-**C++ include path resolution for `pagmoWrapper.vcxproj`:**
-- `PagmoVcpkgInstalledDir` MSBuild property (preferred), or
-- `VCPKG_INSTALLED_DIR` environment variable, or
-- repo-relative fallback: `$(SolutionDir)..\\vcpkg\\installed`
+Building Pagmo.NET from source — the native wrapper, the vcpkg dependencies, running the tests, the
+VS Code workflow — is a contributor task; see **[CONTRIBUTING.md](CONTRIBUTING.md)**. Users of the
+NuGet package never build anything: the native runtimes are bundled in the package.
 
 ---
 

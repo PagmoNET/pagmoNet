@@ -22,7 +22,7 @@ repositories {
         url = uri("https://maven.pkg.github.com/PagmoNET/pagmoNet")
         credentials {
             username = providers.gradleProperty("gpr.user").orElse(System.getenv("GITHUB_ACTOR") ?: "").get()
-            password = providers.gradleProperty("gpr.key").orElse(System.getenv("GITHUB_TOKEN") ?: "").get()
+            password = providers.gradleProperty("gpr.token").orElse(System.getenv("GITHUB_TOKEN") ?: "").get()
         }
     }
 }
@@ -31,7 +31,7 @@ dependencies {
 }
 ```
 
-> **GitHub Packages auth**: Create a [personal access token](https://github.com/settings/tokens) with `read:packages` scope and store it as `gpr.key` in `~/.gradle/gradle.properties`.
+> **GitHub Packages auth**: Create a [personal access token](https://github.com/settings/tokens) with `read:packages` scope and store it as `gpr.token` in `~/.gradle/gradle.properties`.
 
 ## Usage
 

@@ -9,18 +9,22 @@ repositories {
         url = uri("https://maven.pkg.github.com/PagmoNET/pagmoNet")
         credentials {
             username = providers.gradleProperty("gpr.user").orElse(System.getenv("GITHUB_ACTOR") ?: "").get()
-            password = providers.gradleProperty("gpr.key").orElse(System.getenv("GITHUB_TOKEN") ?: "").get()
+            password = providers.gradleProperty("gpr.token").orElse(System.getenv("GITHUB_TOKEN") ?: "").get()
         }
     }
 }
 dependencies {
     implementation("io.github.pagmonet:pagmonet4j:1.0.0")
-    // optional Kotlin DSL extensions:
+    // optional: Kotlin DSL extensions
     implementation("io.github.pagmonet:pagmonet4j-kotlin:1.0.0")
+    // optional: IPOPT gradient-based solver native runtime (see below)
+    implementation("io.github.pagmonet:pagmonet4j-ipopt:1.0.0")
 }
 ```
 
-> **GitHub Packages auth**: GitHub requires authentication even for public packages. Create a [personal access token](https://github.com/settings/tokens) with `read:packages` scope and store it as `gpr.key` in `~/.gradle/gradle.properties`, or set `GITHUB_TOKEN` in your environment.
+> **GitHub Packages auth**: GitHub requires authentication even for public packages. Create a [personal access token](https://github.com/settings/tokens) with `read:packages` scope and store it as `gpr.token` in `~/.gradle/gradle.properties`, or set `GITHUB_TOKEN` in your environment.
+
+> **IPOPT (`pagmonet4j-ipopt`)**: The base `pagmonet4j` already contains the `ipopt` algorithm — it loads `libipopt` at runtime via `dlopen`, so no IPOPT is linked into the (MPL-2.0) base. Add `pagmonet4j-ipopt` to bundle a `libipopt` (it carries the native for every platform), or bring your own via a system install or the `PAGMONET_IPOPT_LIBRARY` environment variable. Without it, `ipopt` simply reports unavailable — check `OptionalSolverAvailability.isIpoptAvailable()` before use.
 
 ## Quickstart
 
@@ -87,29 +91,11 @@ Then run any scenario:
 ./gradlew :examples:run --args all         # all of the above
 ```
 
-## Local dev build
+## Building from source
 
-The native library must be built and on the library path. Set `PAGMO4J_NATIVE_DIR` to the directory containing the native binary:
-
-```powershell
-# Windows — build native first (requires VCPKG_ROOT and JAVA_HOME)
-$env:VCPKG_ROOT = "C:\vcpkg"
-pwsh scripts/build-native.ps1 -Configuration Release
-
-$env:PAGMO4J_NATIVE_DIR = "pagmoWrapper/win-build"
-./gradlew :core:test :kotlin-ext:test
-```
-
-```bash
-# Linux/macOS
-export VCPKG_ROOT=~/vcpkg
-pwsh scripts/build-native.ps1 -Configuration Release
-
-export PAGMO4J_NATIVE_DIR="pagmoWrapper/build"
-./gradlew :core:test :kotlin-ext:test
-```
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for full build instructions.
+Building `pagmonet4j` from source — the native JNI library plus running the tests — is a contributor
+task; see **[CONTRIBUTING.md](CONTRIBUTING.md)**. Users of the published package never build anything:
+the jar carries the native library for every platform.
 
 ## Threading
 
@@ -125,7 +111,7 @@ For BFE (batch fitness evaluation), implement `has_batch_fitness()` + `batch_fit
 
 ## Known limitations (v1.0)
 
-- **Native bundling** — the published JAR bundles native libraries for Windows x64, Linux x64, and macOS (arm64 + x86_64 universal). No separate installation required on any supported platform. For local dev builds, set `PAGMO4J_NATIVE_DIR` to point at the directory containing the freshly built binary.
+- **Native bundling** — the published JAR bundles native libraries for Windows x64, Linux x64, and macOS (arm64 + x86_64 universal). No separate installation required on any supported platform.
 - **Object lifecycle** — use try-with-resources (`try (var p = new problem(...))`) whenever possible. If you don't call `close()`, cleanup is finalizer-based and non-deterministic.
 - **`free_form` topology** — dynamic edge add/remove is not yet exposed in Java.
 - **Gradient/hessian** — wrapped and tested for basic cases; sparse Hessian patterns have limited test coverage.
