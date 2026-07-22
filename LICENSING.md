@@ -91,8 +91,10 @@ base distribution:
 - must let recipients modify those libraries and relink the wrapper against their
   modified versions (LGPL-3.0 §4 / LGPL-2.1 §6).
 
-The mechanism for obtaining the relinkable components is described in the base
-packages' LGPL-compliance materials.
+Each base package ships the verbatim LGPL/GPL license texts in its
+`THIRD_PARTY_LICENSES.md`, and its `RELINKING.md` describes how to relink the wrapper
+against modified versions of pagmo2 / NLopt (the Corresponding Source is the public,
+reproducible build in this repository).
 
 ## Files derived from pagmo inside the MPL base
 

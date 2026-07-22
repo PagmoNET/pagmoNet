@@ -8,7 +8,7 @@ IPOPT is a gradient-based interior-point solver for large-scale nonlinear constr
 
 ## Requirements
 
-- .NET 10.0+
+- .NET 8.0+
 - The base **`Pagmo.NET`** package (a dependency of this one — restored automatically)
 - No separate IPOPT installation required — the native binaries are bundled here
 

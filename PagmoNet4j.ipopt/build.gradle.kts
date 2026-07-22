@@ -52,6 +52,11 @@ tasks.processResources {
             from(ridDir) { into("natives/${ridDir.name}") }
         }
     }
+    // Ship the license set inside the jar (META-INF is the Maven convention).
+    from(rootProject.projectDir) {
+        include("LICENSE", "NOTICE", "THIRD_PARTY_LICENSES.md")
+        into("META-INF")
+    }
 }
 
 // SWIG-generated code (in the base) has missing tags; harmless here but keep doclint quiet.

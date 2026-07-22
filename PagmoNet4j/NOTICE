@@ -30,9 +30,8 @@ the third-party components listed below, each of which retains its own license.
 
 LGPL components
 ---------------
-pagmo2 and NLopt are used under the GNU Lesser General Public License. This
-distribution includes copies of their licenses, and — as required by
-LGPL-3.0 section 4 and LGPL-2.1 section 6 — permits you to modify those
-libraries and relink pagmonet4j against your modified versions. See the
-project's LGPL-compliance documentation for how to obtain the relinkable
-components.
+pagmo2 and NLopt are used under the GNU Lesser General Public License. The
+verbatim license texts (LGPL-3.0, GPL-3.0, and LGPL-2.1) are reproduced in
+THIRD_PARTY_LICENSES.md, which ships with this distribution. As required by
+LGPL-3.0 section 4 and LGPL-2.1 section 6, you may modify those libraries and
+relink pagmonet4j against your modified versions; RELINKING.md describes how.

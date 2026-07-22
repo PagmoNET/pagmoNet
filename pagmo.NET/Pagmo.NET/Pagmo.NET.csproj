@@ -64,7 +64,9 @@
     <None Include="..\docs\nuget-readme.md" Pack="true" PackagePath="\" />
 
     <None Include="..\LICENSE" Pack="true" PackagePath="\" />
+    <None Include="..\NOTICE" Pack="true" PackagePath="\" />
     <None Include="..\THIRD_PARTY_LICENSES.md" Pack="true" PackagePath="\" />
+    <None Include="..\RELINKING.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
   <!-- Windows cmake static build: single self-contained DLL (pagmo2 + Boost + TBB + NLopt

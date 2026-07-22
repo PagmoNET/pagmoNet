@@ -98,6 +98,13 @@ Subclasses that previously had no `Clone()` method are unaffected.
 
 ## v1.0.0-beta.1
 
+> **Historical — superseded by v1.0.0.** This entry describes the pre-release "superset"
+> model in which IPOPT was statically linked into the base and
+> `OptionalSolverAvailability.IsIpoptAvailable` returned `true` out of the box. As of
+> v1.0.0 the base links **no** IPOPT and loads `libipopt` at runtime via `dlopen`; IPOPT is
+> unavailable unless the `Pagmo.NET.Ipopt` companion (or a system/`PAGMONET_IPOPT_LIBRARY`
+> library) is present. The IPOPT rows in the environment matrix below reflect the old model.
+
 ### Overview
 
 First public beta of Pagmo.NET - a C# wrapper for [pagmo2](https://esa.github.io/pagmo2/).

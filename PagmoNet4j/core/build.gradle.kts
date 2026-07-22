@@ -72,6 +72,13 @@ tasks.processResources {
             into("natives/osx-x64")
         }
     }
+    // Ship the license set inside the jar (META-INF is the Maven convention). This is what
+    // makes the NOTICE's "this distribution includes copies of their licenses" true — the
+    // LGPL texts for pagmo2/NLopt live verbatim in THIRD_PARTY_LICENSES.md.
+    from(rootProject.projectDir) {
+        include("LICENSE", "NOTICE", "THIRD_PARTY_LICENSES.md", "RELINKING.md")
+        into("META-INF")
+    }
 }
 
 tasks.test {

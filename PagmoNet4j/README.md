@@ -115,6 +115,7 @@ For BFE (batch fitness evaluation), implement `has_batch_fitness()` + `batch_fit
 - **Object lifecycle** — use try-with-resources (`try (var p = new problem(...))`) whenever possible. If you don't call `close()`, cleanup is finalizer-based and non-deterministic.
 - **`free_form` topology** — dynamic edge add/remove is not yet exposed in Java.
 - **Gradient/hessian** — wrapped and tested for basic cases; sparse Hessian patterns have limited test coverage.
+- **Typed log projections** — every algorithm exposes structured logs, but the level differs: `bee_colony`, `cmaes`, `compass_search`, `de`, `ihs`, `mbh`, `pso`, `sade`, `sea`, `sga`, and `simulated_annealing` provide a typed `getTypedLogLines()` (and a populated `getLogLines()`). The remaining algorithms (e.g. `nsga2`, `moead`, `gaco`, `xnes`, `ipopt`, `nlopt`) currently expose only the raw `get_log_entry(i)` / `get_log_entry_count()` primitives — their `getLogLines()` returns an empty list. (The C# binding provides typed projections for all of these; Java parity is planned.)
 - **Kotlin wrappers** — BFE, hypervolume, and multi-objective utilities are available via the Java API; Kotlin convenience wrappers are not yet complete.
 
 ## License
