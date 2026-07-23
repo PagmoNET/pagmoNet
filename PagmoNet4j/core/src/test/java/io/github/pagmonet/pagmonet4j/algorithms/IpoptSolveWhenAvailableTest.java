@@ -58,4 +58,35 @@ class IpoptSolveWhenAvailableTest {
             }
         }
     }
+
+    // The PascalCase alias (C# parity) must forward to the SWIG get_last_opt_result_code(), and the
+    // typed log projection (was emptyList() in Java before the fix) must match the C# IpoptLogLine shape.
+    @Test
+    void ipoptTypedLogAndResultCodeAliasWhenAvailable() {
+        assumeTrue(OptionalSolverAvailability.isIpoptAvailable(),
+            "libipopt is not loadable here; add the pagmonet4j-ipopt companion to exercise this.");
+
+        try (QuadraticProblem prob = new QuadraticProblem();
+             ipopt algo = new ipopt()) {
+            algo.set_integer_option("print_level", 0);
+            algo.set_verbosity(1L);
+
+            try (population pop = new population(prob, 1L, 42L);
+                 population evolved = algo.evolve(pop)) {
+
+                assertEquals(algo.get_last_opt_result_code(), algo.getLastOptimizationResultCode(),
+                    "getLastOptimizationResultCode() must forward to get_last_opt_result_code()");
+
+                var typed = algo.getTypedLogLines();
+                assertEquals(typed.size(), algo.getLogLines().size(),
+                    "generic getLogLines() must project every typed line (was emptyList() before the fix)");
+                if (!typed.isEmpty()) {
+                    var line = typed.get(0);
+                    assertEquals("ipopt", line.getAlgorithmName());
+                    assertTrue(line.getRawFields().containsKey("objective_evaluations"));
+                    assertTrue(line.toDisplayString().contains("obj_eval="));
+                }
+            }
+        }
+    }
 }

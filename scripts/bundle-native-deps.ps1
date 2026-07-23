@@ -95,6 +95,68 @@ function Copy-Lib([System.IO.FileInfo]$item) {
     Copy-Item $src (Join-Path $OutputDir $item.Name) -Force
 }
 
+# Best-effort: harvest each bundled conda package's own license text (info/licenses/*) plus an SPDX
+# manifest into $OutputDir/licenses/, so the EPL companion ships the exact per-platform verbatim texts
+# for its runtime closure (OpenBLAS BSD-3, MUMPS CeCILL-C, the GCC runtime, libipopt EPL, ...). The
+# conda prefix is derived by walking up from -SearchDir until a sibling conda-meta/ appears, so no
+# caller change is needed. This NEVER throws: a missing license must not fail a release, and the base
+# packages already carry the primary LGPL/GPL/EPL texts. The SPDX manifest (PACKAGES.txt) is reliable;
+# the verbatim-text copy depends on the conda package cache still being reachable on the build box.
+function Copy-CondaLicenses {
+    try {
+        $prefixes = [System.Collections.Generic.List[string]]::new()
+        foreach ($d in $searchDirs) {
+            $p = $d
+            for ($i = 0; $i -lt 4 -and $p; $i++) {
+                if (Test-Path (Join-Path $p "conda-meta")) { if ($prefixes -notcontains $p) { $prefixes.Add($p) }; break }
+                $p = Split-Path $p -Parent
+            }
+        }
+        if ($prefixes.Count -eq 0) {
+            Write-Warning "Copy-CondaLicenses: no conda-meta near -SearchDir; skipping license harvest (base packages carry the primary texts)."
+            return
+        }
+
+        $licRoot = Join-Path $OutputDir "licenses"
+        New-Item -ItemType Directory -Force -Path $licRoot | Out-Null
+        $manifest = [System.Collections.Generic.List[string]]::new()
+        $manifest.Add("Third-party components bundled in this IPOPT companion payload,")
+        $manifest.Add("harvested from the conda-forge runtime closure. Each line is: <package> <version> [SPDX].")
+        $manifest.Add("Verbatim license texts, when the upstream package shipped them, are under licenses/<package>/.")
+        $manifest.Add("")
+
+        foreach ($prefix in $prefixes) {
+            foreach ($meta in (Get-ChildItem (Join-Path $prefix "conda-meta") -Filter *.json -File -ErrorAction SilentlyContinue)) {
+                try { $j = Get-Content $meta.FullName -Raw | ConvertFrom-Json } catch { continue }
+                if (-not $j.name) { continue }
+                $spdx = if ($j.license) { $j.license } else { "see package" }
+                $manifest.Add(("{0} {1} [{2}]" -f $j.name, $j.version, $spdx))
+
+                # Locate the package's extracted info/licenses in the conda package cache (fields vary
+                # across conda/mamba versions -- try the known ones, then fall back to a tarball-derived dir).
+                $pkgDir = $null
+                foreach ($cand in @($j.extracted_package_dir, $j.package_tarball_full_path)) {
+                    if (-not $cand) { continue }
+                    $c = if (Test-Path $cand -PathType Container) { $cand } else { $cand -replace '\.(conda|tar\.bz2)$', '' }
+                    if ($c -and (Test-Path (Join-Path $c "info/licenses"))) { $pkgDir = $c; break }
+                }
+                if ($pkgDir) {
+                    $dest = Join-Path $licRoot $j.name
+                    New-Item -ItemType Directory -Force -Path $dest | Out-Null
+                    Copy-Item (Join-Path $pkgDir "info/licenses/*") $dest -Recurse -Force -ErrorAction SilentlyContinue
+                }
+            }
+        }
+
+        Set-Content -Path (Join-Path $licRoot "PACKAGES.txt") -Value ($manifest -join "`n")
+        $copied = (Get-ChildItem $licRoot -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -ne 'PACKAGES.txt' } | Measure-Object).Count
+        Write-Host "Licenses: wrote $licRoot\PACKAGES.txt (SPDX manifest) + $copied verbatim license file(s)."
+    }
+    catch {
+        Write-Warning "Copy-CondaLicenses: best-effort license harvest failed ($($_.Exception.Message)); continuing (not a release blocker)."
+    }
+}
+
 # ──────────────────────────────────────────────────────────────────────────────
 if ($IsLinux) {
     if (-not (Get-Command patchelf -ErrorAction SilentlyContinue)) {
@@ -220,6 +282,7 @@ if ($IsLinux) {
     }
 
     Write-Host "Linux: staged $((Get-ChildItem $OutputDir -File).Count) libs (self-contained IPOPT DT_NEEDED closure) into $OutputDir (RPATH=`$ORIGIN)."
+    Copy-CondaLicenses
     return
 }
 
@@ -346,6 +409,7 @@ if ($IsMacOS) {
         }
     }
     Write-Host "macOS: staged $($bundled.Count) dylibs (IPOPT dependency closure) into $OutputDir (@loader_path, ad-hoc signed)."
+    Copy-CondaLicenses
     return
 }
 
@@ -370,3 +434,4 @@ foreach ($dir in $searchDirs) {
     }
 }
 Write-Host "Windows: staged $count non-system DLLs from the IPOPT env into $OutputDir"
+Copy-CondaLicenses

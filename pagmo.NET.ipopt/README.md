@@ -6,6 +6,8 @@ Add it **alongside** `Pagmo.NET` (this package depends on the base — you get b
 
 IPOPT is a gradient-based interior-point solver for large-scale nonlinear constrained optimization. It requires the problem to supply gradients (`has_gradient() = true`).
 
+> **Using Java or Kotlin?** The equivalent companion is **[PagmoNet4j.ipopt](https://github.com/PagmoNET/pagmoNet)**.
+
 ## Requirements
 
 - .NET 8.0+

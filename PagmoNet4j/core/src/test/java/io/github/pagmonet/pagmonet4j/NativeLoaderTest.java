@@ -30,27 +30,24 @@ class NativeLoaderTest {
 
     @Test
     void extractionUsesUniqueDirectoryWithPid() {
-        // When extracting from JAR, the temp directory must contain the current PID
-        // so concurrent JVM instances don't collide. This test checks the naming
-        // convention by scanning temp directories created during this test run.
-        // (NativeLoader is already loaded via PAGMO4J_NATIVE_DIR in tests — we
-        // verify the naming contract by inspecting the directory name pattern.)
+        // When extracting from JAR, the temp directory name must contain the current PID so
+        // concurrent JVM instances don't collide, and the unique suffix is supplied by
+        // Files.createTempDirectory. This test checks that naming contract by scanning temp
+        // directories created during this run. (NativeLoader is already loaded via
+        // PAGMO4J_NATIVE_DIR in tests, so extraction may or may not have run.)
         String tmpDir = System.getProperty("java.io.tmpdir");
         long pid = ProcessHandle.current().pid();
+        String prefix = "pagmonet4j-native-" + pid + "-";
         File[] matches = new File(tmpDir).listFiles(f ->
-            f.isDirectory() && f.getName().startsWith("pagmonet4j-native-" + pid + "-"));
-        // If PAGMO4J_NATIVE_DIR is set (normal test mode), extraction path is skipped —
-        // assert the naming pattern is correct for the extraction path when it IS used.
-        // This is a structural test: if extraction was used, the dir name contains the pid.
+            f.isDirectory() && f.getName().startsWith(prefix));
+        // If extraction was used, the dir name is "<prefix><unique suffix from createTempDirectory>".
         if (matches != null && matches.length > 0) {
             for (File dir : matches) {
                 String name = dir.getName();
-                assertTrue(name.startsWith("pagmonet4j-native-" + pid + "-"),
-                    "Extraction dir must follow 'pagmonet4j-native-<pid>-<uuid>' pattern, got: " + name);
-                // UUID portion (after pid-) must be parseable
-                String uuidPart = name.substring(("pagmonet4j-native-" + pid + "-").length());
-                assertDoesNotThrow(() -> java.util.UUID.fromString(uuidPart),
-                    "Suffix must be a valid UUID, got: " + uuidPart);
+                assertTrue(name.startsWith(prefix),
+                    "Extraction dir must follow 'pagmonet4j-native-<pid>-<unique>' pattern, got: " + name);
+                assertFalse(name.substring(prefix.length()).isEmpty(),
+                    "createTempDirectory must append a non-empty unique suffix, got: " + name);
             }
         }
         // If no dirs found (normal test env with PAGMO4J_NATIVE_DIR), test passes vacuously.

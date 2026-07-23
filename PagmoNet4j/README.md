@@ -2,6 +2,8 @@
 
 Java and Kotlin bindings for [pagmo2](https://github.com/esa/pagmo2), part of the [PagmoNet](https://github.com/PagmoNET) family.
 
+> **Working in C# / .NET?** The same pagmo2 core is also wrapped as **[Pagmo.NET](https://github.com/PagmoNET/pagmoNet)** — the two APIs are kept deliberately close.
+
 ```kotlin
 // build.gradle.kts
 repositories {
@@ -65,6 +67,17 @@ single- or multi-objective, constrained, or mixed-integer. See the
 [Algorithm Selection Guide](docs/algorithm-selection.md) for a table mapping each wrapped
 pagmo2 algorithm to its problem category.
 
+Every wrapped algorithm exposes its run history as **typed structured logs**: call
+`set_verbosity(1L)` then `algo.getTypedLogLines()` for algorithm-specific records (e.g.
+`de.DeLogLine`, `nsga2.Nsga2LogLine`), or the generic `algo.getLogLines()` for uniform
+`IAlgorithmLogLine` entries — matching the Pagmo.NET typed-log surface one-for-one.
+
+## Coming from Pagmo.NET (C#)?
+
+The C# and Java bindings share the same SWIG core, so most of the API is identical. The
+[Porting from Pagmo.NET guide](docs/porting-from-pagmo-net.md) lists the handful of translate-time
+differences (`Dispose()` → `close()`, properties → methods, unsigned → `long`, log-record casing).
+
 ## Running the examples
 
 The examples resolve the **published** `pagmonet4j` packages from GitHub Packages — no native build
@@ -115,7 +128,6 @@ For BFE (batch fitness evaluation), implement `has_batch_fitness()` + `batch_fit
 - **Object lifecycle** — use try-with-resources (`try (var p = new problem(...))`) whenever possible. If you don't call `close()`, cleanup is finalizer-based and non-deterministic.
 - **`free_form` topology** — dynamic edge add/remove is not yet exposed in Java.
 - **Gradient/hessian** — wrapped and tested for basic cases; sparse Hessian patterns have limited test coverage.
-- **Typed log projections** — every algorithm exposes structured logs, but the level differs: `bee_colony`, `cmaes`, `compass_search`, `de`, `ihs`, `mbh`, `pso`, `sade`, `sea`, `sga`, and `simulated_annealing` provide a typed `getTypedLogLines()` (and a populated `getLogLines()`). The remaining algorithms (e.g. `nsga2`, `moead`, `gaco`, `xnes`, `ipopt`, `nlopt`) currently expose only the raw `get_log_entry(i)` / `get_log_entry_count()` primitives — their `getLogLines()` returns an empty list. (The C# binding provides typed projections for all of these; Java parity is planned.)
 - **Kotlin wrappers** — BFE, hypervolume, and multi-objective utilities are available via the Java API; Kotlin convenience wrappers are not yet complete.
 
 ## License

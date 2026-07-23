@@ -432,21 +432,452 @@ extern "C" {
     }
 %}
 
-// Algorithms with no structured log output
-PAGMO4J_SIMPLE_ALGO_CODE(cstrs_self_adaptive)
-PAGMO4J_SIMPLE_ALGO_CODE(de1220)
-PAGMO4J_SIMPLE_ALGO_CODE(gaco)
-PAGMO4J_SIMPLE_ALGO_CODE(gwo)
-PAGMO4J_SIMPLE_ALGO_CODE(maco)
-PAGMO4J_SIMPLE_ALGO_CODE(moead)
-PAGMO4J_SIMPLE_ALGO_CODE(moead_gen)
-PAGMO4J_SIMPLE_ALGO_CODE(nsga2)
-PAGMO4J_SIMPLE_ALGO_CODE(nspso)
+// null_algorithm has no log output; everything else below has a typed projection matching
+// the C# side (pagmoExtensions/Algorithms/<algo>.cs). Field lists, RawFields keys and display
+// strings are kept identical to C# so an auto-translated C# app sees the same shape.
 PAGMO4J_SIMPLE_ALGO_CODE(null_algorithm)
-PAGMO4J_SIMPLE_ALGO_CODE(pso_gen)
-PAGMO4J_SIMPLE_ALGO_CODE(xnes)
-PAGMO4J_SIMPLE_ALGO_CODE(nlopt)
-PAGMO4J_SIMPLE_ALGO_CODE(ipopt)
+
+// ── cstrs_self_adaptive typed log projection ─────────────────────────────────
+%typemap(javacode) pagmo::cstrs_self_adaptive %{
+    public java.util.List<CstrsLogLine> getTypedLogLines() {
+        int count = get_log_entry_count();
+        java.util.List<CstrsLogLine> out = new java.util.ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            CstrsLogEntry e = get_log_entry(i);
+            try { out.add(new CstrsLogLine(e.getIter(), e.getFevals().longValue(), e.getBest(),
+                          e.getInfeasibility(), e.getViolated().longValue(), e.getViolation_norm(),
+                          e.getFeasible().longValue())); }
+            finally { e.delete(); }
+        }
+        return out;
+    }
+    @Override public java.util.List<IAlgorithmLogLine> getLogLines() {
+        return new java.util.ArrayList<>(getTypedLogLines());
+    }
+    @Override public void close() { delete(); }
+
+    public record CstrsLogLine(long iteration, long functionEvaluations, double bestFitness,
+                               double infeasibility, long violatedConstraints, double violationNorm,
+                               long feasibleCount) implements IAlgorithmLogLine {
+        @Override public String getAlgorithmName() { return "cstrs_self_adaptive"; }
+        @Override public java.util.Map<String, Object> getRawFields() {
+            return java.util.Map.of("iteration", iteration, "function_evaluations", functionEvaluations,
+                "best_fitness", bestFitness, "infeasibility", infeasibility,
+                "violated_constraints", violatedConstraints, "violation_norm", violationNorm,
+                "feasible_count", feasibleCount);
+        }
+        @Override public String toDisplayString() {
+            return "iter=" + iteration + ", fevals=" + functionEvaluations + ", best=" + bestFitness +
+                   ", infeas=" + infeasibility + ", violated=" + violatedConstraints +
+                   ", feasible=" + feasibleCount;
+        }
+    }
+%}
+
+// ── de1220 typed log projection ──────────────────────────────────────────────
+%typemap(javacode) pagmo::de1220 %{
+    public java.util.List<De1220LogLine> getTypedLogLines() {
+        int count = get_log_entry_count();
+        java.util.List<De1220LogLine> out = new java.util.ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            De1220LogEntry e = get_log_entry(i);
+            try { out.add(new De1220LogLine(e.getGen(), e.getFevals().longValue(), e.getBest(),
+                          e.getFeval_difference(), e.getDx(), e.getVariant(), e.getF(), e.getCr())); }
+            finally { e.delete(); }
+        }
+        return out;
+    }
+    @Override public java.util.List<IAlgorithmLogLine> getLogLines() {
+        return new java.util.ArrayList<>(getTypedLogLines());
+    }
+    @Override public void close() { delete(); }
+
+    public record De1220LogLine(long generation, long functionEvaluations, double bestFitness,
+                                double functionEvaluationDifference, double dx, long variant,
+                                double f, double cr) implements IAlgorithmLogLine {
+        @Override public String getAlgorithmName() { return "de1220"; }
+        @Override public java.util.Map<String, Object> getRawFields() {
+            return java.util.Map.of("generation", generation, "function_evaluations", functionEvaluations,
+                "best_fitness", bestFitness, "function_evaluation_difference", functionEvaluationDifference,
+                "dx", dx, "variant", variant, "f", f, "cr", cr);
+        }
+        @Override public String toDisplayString() {
+            return "gen=" + generation + ", fevals=" + functionEvaluations + ", best=" + bestFitness +
+                   ", variant=" + variant;
+        }
+    }
+%}
+
+// ── gaco typed log projection ────────────────────────────────────────────────
+%typemap(javacode) pagmo::gaco %{
+    public java.util.List<GacoLogLine> getTypedLogLines() {
+        int count = get_log_entry_count();
+        java.util.List<GacoLogLine> out = new java.util.ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            GacoLogEntry e = get_log_entry(i);
+            try { out.add(new GacoLogLine(e.getGen(), e.getFevals().longValue(), e.getBest_fit(),
+                          e.getKernel(), e.getOracle(), e.getDx(), e.getDp())); }
+            finally { e.delete(); }
+        }
+        return out;
+    }
+    @Override public java.util.List<IAlgorithmLogLine> getLogLines() {
+        return new java.util.ArrayList<>(getTypedLogLines());
+    }
+    @Override public void close() { delete(); }
+
+    public record GacoLogLine(long generation, long functionEvaluations, double bestFitness,
+                              long kernelSize, double oracleValue, double dx, double dp)
+            implements IAlgorithmLogLine {
+        @Override public String getAlgorithmName() { return "gaco"; }
+        @Override public java.util.Map<String, Object> getRawFields() {
+            return java.util.Map.of("generation", generation, "function_evaluations", functionEvaluations,
+                "best_fitness", bestFitness, "kernel_size", kernelSize, "oracle_value", oracleValue,
+                "dx", dx, "dp", dp);
+        }
+        @Override public String toDisplayString() {
+            return "gen=" + generation + ", fevals=" + functionEvaluations + ", best=" + bestFitness +
+                   ", ker=" + kernelSize + ", oracle=" + oracleValue + ", dx=" + dx + ", dp=" + dp;
+        }
+    }
+%}
+
+// ── gwo typed log projection ─────────────────────────────────────────────────
+%typemap(javacode) pagmo::gwo %{
+    public java.util.List<GwoLogLine> getTypedLogLines() {
+        int count = get_log_entry_count();
+        java.util.List<GwoLogLine> out = new java.util.ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            GwoLogEntry e = get_log_entry(i);
+            try { out.add(new GwoLogLine(e.getGen(), e.getAlpha(), e.getBeta(), e.getDelta())); }
+            finally { e.delete(); }
+        }
+        return out;
+    }
+    @Override public java.util.List<IAlgorithmLogLine> getLogLines() {
+        return new java.util.ArrayList<>(getTypedLogLines());
+    }
+    @Override public void close() { delete(); }
+
+    public record GwoLogLine(long generation, double alpha, double beta, double delta)
+            implements IAlgorithmLogLine {
+        @Override public String getAlgorithmName() { return "gwo"; }
+        @Override public java.util.Map<String, Object> getRawFields() {
+            return java.util.Map.of("generation", generation, "alpha", alpha, "beta", beta, "delta", delta);
+        }
+        @Override public String toDisplayString() {
+            return "gen=" + generation + ", alpha=" + alpha + ", beta=" + beta + ", delta=" + delta;
+        }
+    }
+%}
+
+// ── pso_gen typed log projection (shares the PsoLogEntry raw type) ────────────
+%typemap(javacode) pagmo::pso_gen %{
+    public java.util.List<PsoGenLogLine> getTypedLogLines() {
+        int count = get_log_entry_count();
+        java.util.List<PsoGenLogLine> out = new java.util.ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            PsoLogEntry e = get_log_entry(i);
+            try { out.add(new PsoGenLogLine(e.getGen(), e.getFevals().longValue(), e.getBest(),
+                          e.getInertia(), e.getCognitive(), e.getSocial())); }
+            finally { e.delete(); }
+        }
+        return out;
+    }
+    @Override public java.util.List<IAlgorithmLogLine> getLogLines() {
+        return new java.util.ArrayList<>(getTypedLogLines());
+    }
+    @Override public void close() { delete(); }
+
+    public record PsoGenLogLine(long generation, long functionEvaluations, double bestFitness,
+                                double inertia, double cognitive, double social)
+            implements IAlgorithmLogLine {
+        @Override public String getAlgorithmName() { return "pso_gen"; }
+        @Override public java.util.Map<String, Object> getRawFields() {
+            return java.util.Map.of("generation", generation, "function_evaluations", functionEvaluations,
+                "best_fitness", bestFitness, "inertia", inertia, "cognitive", cognitive, "social", social);
+        }
+        @Override public String toDisplayString() {
+            return "gen=" + generation + ", fevals=" + functionEvaluations + ", best=" + bestFitness;
+        }
+    }
+%}
+
+// ── xnes typed log projection ────────────────────────────────────────────────
+%typemap(javacode) pagmo::xnes %{
+    public java.util.List<XnesLogLine> getTypedLogLines() {
+        int count = get_log_entry_count();
+        java.util.List<XnesLogLine> out = new java.util.ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            XnesLogEntry e = get_log_entry(i);
+            try { out.add(new XnesLogLine(e.getGen(), e.getFevals().longValue(), e.getBest(),
+                          e.getDx(), e.getDf(), e.getSigma())); }
+            finally { e.delete(); }
+        }
+        return out;
+    }
+    @Override public java.util.List<IAlgorithmLogLine> getLogLines() {
+        return new java.util.ArrayList<>(getTypedLogLines());
+    }
+    @Override public void close() { delete(); }
+
+    public record XnesLogLine(long generation, long functionEvaluations, double bestFitness,
+                              double dx, double df, double sigma) implements IAlgorithmLogLine {
+        @Override public String getAlgorithmName() { return "xnes"; }
+        @Override public java.util.Map<String, Object> getRawFields() {
+            return java.util.Map.of("generation", generation, "function_evaluations", functionEvaluations,
+                "best_fitness", bestFitness, "dx", dx, "df", df, "sigma", sigma);
+        }
+        @Override public String toDisplayString() {
+            return "gen=" + generation + ", fevals=" + functionEvaluations + ", best=" + bestFitness;
+        }
+    }
+%}
+
+// ── nlopt typed log projection ───────────────────────────────────────────────
+%typemap(javacode) pagmo::nlopt %{
+    public java.util.List<NloptLogLine> getTypedLogLines() {
+        int count = get_log_entry_count();
+        java.util.List<NloptLogLine> out = new java.util.ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            NloptLogEntry e = get_log_entry(i);
+            try { out.add(new NloptLogLine(e.getFevals().longValue(), e.getObjective(),
+                          e.getViolated().longValue(), e.getViolation_norm(), e.getFeasible())); }
+            finally { e.delete(); }
+        }
+        return out;
+    }
+    @Override public java.util.List<IAlgorithmLogLine> getLogLines() {
+        return new java.util.ArrayList<>(getTypedLogLines());
+    }
+    @Override public void close() { delete(); }
+
+    public record NloptLogLine(long functionEvaluations, double objective, long violatedConstraints,
+                               double violationNorm, boolean feasible) implements IAlgorithmLogLine {
+        @Override public String getAlgorithmName() { return "nlopt"; }
+        @Override public java.util.Map<String, Object> getRawFields() {
+            return java.util.Map.of("function_evaluations", functionEvaluations, "objective", objective,
+                "violated_constraints", violatedConstraints, "violation_norm", violationNorm,
+                "feasible", feasible);
+        }
+        @Override public String toDisplayString() {
+            return "fevals=" + functionEvaluations + ", objective=" + objective + ", feasible=" + feasible;
+        }
+    }
+%}
+
+// ── ipopt typed log projection (+ PascalCase result-code alias for C# parity) ─
+%typemap(javacode) pagmo::ipopt %{
+    public int getLastOptimizationResultCode() { return get_last_opt_result_code(); }
+
+    public java.util.List<IpoptLogLine> getTypedLogLines() {
+        int count = get_log_entry_count();
+        java.util.List<IpoptLogLine> out = new java.util.ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            IpoptLogEntry e = get_log_entry(i);
+            try { out.add(new IpoptLogLine(e.getObjective_evaluations().longValue(), e.getObjective(),
+                          e.getViolated().longValue(), e.getViolation_norm(), e.getFeasible())); }
+            finally { e.delete(); }
+        }
+        return out;
+    }
+    @Override public java.util.List<IAlgorithmLogLine> getLogLines() {
+        return new java.util.ArrayList<>(getTypedLogLines());
+    }
+    @Override public void close() { delete(); }
+
+    public record IpoptLogLine(long objectiveEvaluations, double objective, long violatedConstraints,
+                               double violationNorm, boolean feasible) implements IAlgorithmLogLine {
+        @Override public String getAlgorithmName() { return "ipopt"; }
+        @Override public java.util.Map<String, Object> getRawFields() {
+            return java.util.Map.of("objective_evaluations", objectiveEvaluations, "objective", objective,
+                "violated_constraints", violatedConstraints, "violation_norm", violationNorm,
+                "feasible", feasible);
+        }
+        @Override public String toDisplayString() {
+            return "obj_eval=" + objectiveEvaluations + ", objective=" + objective + ", feasible=" + feasible;
+        }
+    }
+%}
+
+// ── multi-objective typed log projections (log entry carries a fitness/ideal vector) ──
+%typemap(javacode) pagmo::maco %{
+    public java.util.List<MacoLogLine> getTypedLogLines() {
+        int count = get_log_entry_count();
+        java.util.List<MacoLogLine> out = new java.util.ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            MoVectorLogEntry e = get_log_entry(i);
+            try {
+                DoubleVector v = e.getFitness();
+                int n = (int) v.size();
+                java.util.List<Double> fitness = new java.util.ArrayList<>(n);
+                for (int j = 0; j < n; j++) fitness.add(v.get(j));
+                v.delete();
+                out.add(new MacoLogLine(e.getGen(), e.getFevals().longValue(), fitness));
+            } finally { e.delete(); }
+        }
+        return out;
+    }
+    @Override public java.util.List<IAlgorithmLogLine> getLogLines() {
+        return new java.util.ArrayList<>(getTypedLogLines());
+    }
+    @Override public void close() { delete(); }
+
+    public record MacoLogLine(long generation, long functionEvaluations,
+                              java.util.List<Double> fitnessVector) implements IAlgorithmLogLine {
+        @Override public String getAlgorithmName() { return "maco"; }
+        @Override public java.util.Map<String, Object> getRawFields() {
+            return java.util.Map.of("generation", generation, "function_evaluations", functionEvaluations,
+                "fitness_vector", fitnessVector);
+        }
+        @Override public String toDisplayString() {
+            return "gen=" + generation + ", fevals=" + functionEvaluations +
+                   ", objectives=" + fitnessVector.size();
+        }
+    }
+%}
+
+%typemap(javacode) pagmo::nsga2 %{
+    public java.util.List<Nsga2LogLine> getTypedLogLines() {
+        int count = get_log_entry_count();
+        java.util.List<Nsga2LogLine> out = new java.util.ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            MoVectorLogEntry e = get_log_entry(i);
+            try {
+                DoubleVector v = e.getFitness();
+                int n = (int) v.size();
+                java.util.List<Double> fitness = new java.util.ArrayList<>(n);
+                for (int j = 0; j < n; j++) fitness.add(v.get(j));
+                v.delete();
+                out.add(new Nsga2LogLine(e.getGen(), e.getFevals().longValue(), fitness));
+            } finally { e.delete(); }
+        }
+        return out;
+    }
+    @Override public java.util.List<IAlgorithmLogLine> getLogLines() {
+        return new java.util.ArrayList<>(getTypedLogLines());
+    }
+    @Override public void close() { delete(); }
+
+    public record Nsga2LogLine(long generation, long functionEvaluations,
+                               java.util.List<Double> fitnessVector) implements IAlgorithmLogLine {
+        @Override public String getAlgorithmName() { return "nsga2"; }
+        @Override public java.util.Map<String, Object> getRawFields() {
+            return java.util.Map.of("generation", generation, "function_evaluations", functionEvaluations,
+                "fitness_vector", fitnessVector);
+        }
+        @Override public String toDisplayString() {
+            return "gen=" + generation + ", fevals=" + functionEvaluations +
+                   ", objectives=" + fitnessVector.size();
+        }
+    }
+%}
+
+%typemap(javacode) pagmo::nspso %{
+    public java.util.List<NspsoLogLine> getTypedLogLines() {
+        int count = get_log_entry_count();
+        java.util.List<NspsoLogLine> out = new java.util.ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            MoVectorLogEntry e = get_log_entry(i);
+            try {
+                DoubleVector v = e.getFitness();
+                int n = (int) v.size();
+                java.util.List<Double> fitness = new java.util.ArrayList<>(n);
+                for (int j = 0; j < n; j++) fitness.add(v.get(j));
+                v.delete();
+                out.add(new NspsoLogLine(e.getGen(), e.getFevals().longValue(), fitness));
+            } finally { e.delete(); }
+        }
+        return out;
+    }
+    @Override public java.util.List<IAlgorithmLogLine> getLogLines() {
+        return new java.util.ArrayList<>(getTypedLogLines());
+    }
+    @Override public void close() { delete(); }
+
+    public record NspsoLogLine(long generation, long functionEvaluations,
+                               java.util.List<Double> fitnessVector) implements IAlgorithmLogLine {
+        @Override public String getAlgorithmName() { return "nspso"; }
+        @Override public java.util.Map<String, Object> getRawFields() {
+            return java.util.Map.of("generation", generation, "function_evaluations", functionEvaluations,
+                "fitness_vector", fitnessVector);
+        }
+        @Override public String toDisplayString() {
+            return "gen=" + generation + ", fevals=" + functionEvaluations +
+                   ", objectives=" + fitnessVector.size();
+        }
+    }
+%}
+
+%typemap(javacode) pagmo::moead %{
+    public java.util.List<MoeadLogLine> getTypedLogLines() {
+        int count = get_log_entry_count();
+        java.util.List<MoeadLogLine> out = new java.util.ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            MoeadLogEntry e = get_log_entry(i);
+            try {
+                DoubleVector v = e.getIdeal_point();
+                int n = (int) v.size();
+                java.util.List<Double> ideal = new java.util.ArrayList<>(n);
+                for (int j = 0; j < n; j++) ideal.add(v.get(j));
+                v.delete();
+                out.add(new MoeadLogLine(e.getGen(), e.getFevals().longValue(), e.getDecomposed_f(), ideal));
+            } finally { e.delete(); }
+        }
+        return out;
+    }
+    @Override public java.util.List<IAlgorithmLogLine> getLogLines() {
+        return new java.util.ArrayList<>(getTypedLogLines());
+    }
+    @Override public void close() { delete(); }
+
+    public record MoeadLogLine(long generation, long functionEvaluations, double decomposedFitness,
+                               java.util.List<Double> idealPoint) implements IAlgorithmLogLine {
+        @Override public String getAlgorithmName() { return "moead"; }
+        @Override public java.util.Map<String, Object> getRawFields() {
+            return java.util.Map.of("generation", generation, "function_evaluations", functionEvaluations,
+                "decomposed_fitness", decomposedFitness, "ideal_point", idealPoint);
+        }
+        @Override public String toDisplayString() {
+            return "gen=" + generation + ", fevals=" + functionEvaluations + ", decomp_f=" + decomposedFitness;
+        }
+    }
+%}
+
+%typemap(javacode) pagmo::moead_gen %{
+    public java.util.List<MoeadGenLogLine> getTypedLogLines() {
+        int count = get_log_entry_count();
+        java.util.List<MoeadGenLogLine> out = new java.util.ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            MoeadLogEntry e = get_log_entry(i);
+            try {
+                DoubleVector v = e.getIdeal_point();
+                int n = (int) v.size();
+                java.util.List<Double> ideal = new java.util.ArrayList<>(n);
+                for (int j = 0; j < n; j++) ideal.add(v.get(j));
+                v.delete();
+                out.add(new MoeadGenLogLine(e.getGen(), e.getFevals().longValue(), e.getDecomposed_f(), ideal));
+            } finally { e.delete(); }
+        }
+        return out;
+    }
+    @Override public java.util.List<IAlgorithmLogLine> getLogLines() {
+        return new java.util.ArrayList<>(getTypedLogLines());
+    }
+    @Override public void close() { delete(); }
+
+    public record MoeadGenLogLine(long generation, long functionEvaluations, double decomposedFitness,
+                                  java.util.List<Double> idealPoint) implements IAlgorithmLogLine {
+        @Override public String getAlgorithmName() { return "moead_gen"; }
+        @Override public java.util.Map<String, Object> getRawFields() {
+            return java.util.Map.of("generation", generation, "function_evaluations", functionEvaluations,
+                "decomposed_fitness", decomposedFitness, "ideal_point", idealPoint);
+        }
+        @Override public String toDisplayString() {
+            return "gen=" + generation + ", fevals=" + functionEvaluations + ", decomp_f=" + decomposedFitness;
+        }
+    }
+%}
 
 // ── sade/sea/sga typed log projections ───────────────────────────────────────
 // Indexed accessors avoid the full std::vector<> JNI wrapper infrastructure.

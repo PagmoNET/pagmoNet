@@ -1,5 +1,6 @@
 package io.github.pagmonet.pagmonet4j.algorithms;
 import io.github.pagmonet.pagmonet4j.*;
+import io.github.pagmonet.pagmonet4j.testproblems.*;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 class XnesTest extends AlgorithmTestBase {
@@ -9,4 +10,35 @@ class XnesTest extends AlgorithmTestBase {
     @Override public boolean supportsSingleObjective() { return true; }
     @Override public boolean supportsMultiObjective()  { return false; }
     @Test void nameContainsNES() { try (xnes a = new xnes(1L)) { assertTrue(a.get_name().contains("NES") || a.get_name().contains("xNES")); } }
+
+    // Scalar typed-log projection: before this was added, xnes.getLogLines() returned emptyList().
+    // Mirrors the C# xnes.GetTypedLogLines() field shape (gen/fevals/best/dx/df/sigma).
+    @Test
+    void typedAndGenericLogsAreExposed() {
+        try (TwoDimensionalSingleObjectiveProblem prob = new TwoDimensionalSingleObjectiveProblem();
+             problem wrapped = new problem(prob);
+             xnes algo = new xnes(25L);
+             population pop = new population(wrapped, 64L, 2L)) {
+
+            algo.set_seed(2L);
+            algo.set_verbosity(1L);
+            try (population ignored = algo.evolve(pop)) {}
+
+            var typed = algo.getTypedLogLines();
+            assertFalse(typed.isEmpty(), "verbosity should produce at least one log line");
+
+            IAlgorithm iface = algo;
+            var generic = iface.getLogLines();
+            assertEquals(typed.size(), generic.size(),
+                "generic getLogLines() must project every typed line (was emptyList() before the fix)");
+
+            var first = generic.get(0);
+            assertEquals("xnes", first.getAlgorithmName());
+            assertTrue(first.getRawFields().containsKey("generation"));
+            assertTrue(first.getRawFields().containsKey("function_evaluations"));
+            assertTrue(first.getRawFields().containsKey("best_fitness"));
+            assertTrue(first.toDisplayString().contains("gen="));
+            assertEquals(typed.get(0).generation(), (long) first.getRawFields().get("generation"));
+        }
+    }
 }

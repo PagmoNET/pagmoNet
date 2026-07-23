@@ -1,8 +1,12 @@
 param(
     [string]$Configuration = "Debug",
-    [string]$Platform = "x64",
-    [switch]$WithIpopt
+    [string]$Platform = "x64"
 )
+
+# IPOPT is never compiled/linked into the wrapper: the `ipopt` algorithm loads libipopt at
+# runtime via dlopen/LoadLibrary (native/deferred_ipopt.cpp), and native/CMakeLists.txt strips
+# PAGMO_WITH_IPOPT unconditionally. So there is no -WithIpopt switch here -- the base is always
+# built IPOPT-free, matching what the per-package/release scripts produce.
 
 $ErrorActionPreference = "Stop"
 
@@ -42,7 +46,7 @@ try {
         $vcpkgToolchain = Join-Path $env:VCPKG_ROOT "scripts/buildsystems/vcpkg.cmake"
         $triplet        = "x64-linux-static-pic"
 
-        $spec = "pagmo2[nlopt,ipopt]:$triplet"
+        $spec = "pagmo2[nlopt]:$triplet"
         Write-Host "==> vcpkg install $spec"
         & $vcpkgExe install $spec `
             "--overlay-triplets=$tripletOverlay" `
@@ -60,7 +64,7 @@ try {
             "-DCMAKE_TOOLCHAIN_FILE=$vcpkgToolchain" `
             "-DVCPKG_TARGET_TRIPLET=$triplet" `
             "-DVCPKG_OVERLAY_TRIPLETS=$tripletOverlay" `
-            "-DPAGMONET_WITH_NLOPT=ON" "-DPAGMONET_WITH_IPOPT=ON"
+            "-DPAGMONET_WITH_NLOPT=ON"
         if ($LASTEXITCODE -ne 0) { throw "cmake configure failed ($LASTEXITCODE)." }
         & cmake --build $buildDir --config $Configuration
         if ($LASTEXITCODE -ne 0) { throw "cmake build failed ($LASTEXITCODE)." }
@@ -74,7 +78,7 @@ try {
         $arch    = (& uname -m).Trim()
         $triplet = if ($arch -eq "arm64") { "arm64-osx-static-pic" } else { "x64-osx-static-pic" }
 
-        $spec = if ($WithIpopt) { "pagmo2[nlopt,ipopt]:$triplet" } else { "pagmo2[nlopt]:$triplet" }
+        $spec = "pagmo2[nlopt]:$triplet"
         Write-Host "==> vcpkg install $spec"
         & $vcpkgExe install $spec `
             "--overlay-triplets=$tripletOverlay" `
@@ -86,7 +90,6 @@ try {
         $cmakeCache = Join-Path $buildDir "CMakeCache.txt"
         if (Test-Path $cmakeCache) { Remove-Item -Force $cmakeCache }
 
-        $ipoptCmakeArg = if ($WithIpopt) { "-DPAGMONET_WITH_IPOPT=ON" } else { $null }
         $cmakeArgs = @(
             "-B$buildDir", "-S$nativeDir",
             "-DCMAKE_BUILD_TYPE=$Configuration",
@@ -95,7 +98,6 @@ try {
             "-DVCPKG_OVERLAY_TRIPLETS=$tripletOverlay",
             "-DPAGMONET_WITH_NLOPT=ON"
         )
-        if ($ipoptCmakeArg) { $cmakeArgs += $ipoptCmakeArg }
         & cmake @cmakeArgs
         if ($LASTEXITCODE -ne 0) { throw "cmake configure failed ($LASTEXITCODE)." }
         & cmake --build $buildDir --config $Configuration
@@ -105,15 +107,10 @@ try {
         $vcpkgExe       = Join-Path $env:VCPKG_ROOT "vcpkg.exe"
         $vcpkgToolchain = Join-Path $env:VCPKG_ROOT "scripts/buildsystems/vcpkg.cmake"
 
-        # When IPOPT_PREFIX is set, conda-forge IPOPT is available as a pre-built
-        # MSVC DLL — use the standard MSVC triplet. Otherwise fall back to the legacy
-        # MinGW/MSYS2 path (requires C:\msys64\mingw64\bin on PATH).
-        $useCondaIPOPT = $WithIpopt -and $env:IPOPT_PREFIX
-        $triplet  = if ($WithIpopt -and -not $useCondaIPOPT) { "x64-mingw-static" } else { "x64-windows-static-md" }
-        $features = if ($WithIpopt) { "nlopt,ipopt" } else { "nlopt" }
+        $triplet = "x64-windows-static-md"
 
-        Write-Host "==> vcpkg install pagmo2[$features]:$triplet"
-        & $vcpkgExe install "pagmo2[$features]:$triplet" `
+        Write-Host "==> vcpkg install pagmo2[nlopt]:$triplet"
+        & $vcpkgExe install "pagmo2[nlopt]:$triplet" `
             "--overlay-triplets=$tripletOverlay" `
             @(Get-VcpkgPortArgs) `
             "--recurse"
@@ -123,46 +120,29 @@ try {
         $cmakeCache = Join-Path $buildDir "CMakeCache.txt"
         if (Test-Path $cmakeCache) { Remove-Item -Force $cmakeCache }
 
-        if ($WithIpopt -and -not $useCondaIPOPT) {
-            # Legacy MinGW build: gcc/g++ from MSYS2 MinGW64 must be on PATH.
-            # -static-libgcc/-static-libstdc++ embed the GCC/libstdc++ runtime into
-            # the DLL; libgfortran (from MUMPS) still loads dynamically from MSYS2.
-            & cmake `
-                "-B$buildDir" "-S$nativeDir" `
-                "-G" "Ninja" `
-                "-DCMAKE_BUILD_TYPE=$Configuration" `
-                "-DCMAKE_TOOLCHAIN_FILE=$vcpkgToolchain" `
-                "-DVCPKG_TARGET_TRIPLET=$triplet" `
-                "-DVCPKG_OVERLAY_TRIPLETS=$tripletOverlay" `
-                "-DCMAKE_SHARED_LINKER_FLAGS=-static-libgcc -static-libstdc++" `
-                "-DPAGMONET_WITH_NLOPT=ON" "-DPAGMONET_WITH_IPOPT=ON"
-        } else {
-            # MSVC build: standard library (no IPOPT) or conda-forge IPOPT.
-            $vsWhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
-            if (-not (Test-Path $vsWhere)) { throw "vswhere.exe not found. Install Visual Studio Build Tools." }
-            $vsInstallPath = & $vsWhere -latest -property installationPath
-            $vcvars = Join-Path $vsInstallPath "VC\Auxiliary\Build\vcvars64.bat"
-            if (-not (Test-Path $vcvars)) { throw "vcvars64.bat not found at '$vcvars'." }
+        # MSVC build. IPOPT is never linked -- the ipopt algorithm loads libipopt at runtime via
+        # LoadLibrary (deferred_ipopt.cpp), so no IPOPT/MinGW toolchain is needed here.
+        $vsWhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
+        if (-not (Test-Path $vsWhere)) { throw "vswhere.exe not found. Install Visual Studio Build Tools." }
+        $vsInstallPath = & $vsWhere -latest -property installationPath
+        $vcvars = Join-Path $vsInstallPath "VC\Auxiliary\Build\vcvars64.bat"
+        if (-not (Test-Path $vcvars)) { throw "vcvars64.bat not found at '$vcvars'." }
 
-            Write-Host "==> Importing VC environment from $vsInstallPath"
-            $vcEnvLines = cmd /c "`"$vcvars`" > nul 2>&1 && set"
-            foreach ($line in $vcEnvLines) {
-                if ($line -match '^([^=]+)=(.*)$') {
-                    [System.Environment]::SetEnvironmentVariable($Matches[1], $Matches[2], 'Process')
-                }
+        Write-Host "==> Importing VC environment from $vsInstallPath"
+        $vcEnvLines = cmd /c "`"$vcvars`" > nul 2>&1 && set"
+        foreach ($line in $vcEnvLines) {
+            if ($line -match '^([^=]+)=(.*)$') {
+                [System.Environment]::SetEnvironmentVariable($Matches[1], $Matches[2], 'Process')
             }
-            $cmakeArgs = @(
-                "-B$buildDir", "-S$nativeDir",
-                "-G", "Ninja",
-                "-DCMAKE_BUILD_TYPE=$Configuration",
-                "-DCMAKE_TOOLCHAIN_FILE=$vcpkgToolchain",
-                "-DVCPKG_TARGET_TRIPLET=$triplet",
-                "-DVCPKG_OVERLAY_TRIPLETS=$tripletOverlay",
-                "-DPAGMONET_WITH_NLOPT=ON"
-            )
-            if ($useCondaIPOPT) { $cmakeArgs += "-DPAGMONET_WITH_IPOPT=ON" }
-            & cmake @cmakeArgs
         }
+        & cmake `
+            "-B$buildDir" "-S$nativeDir" `
+            "-G" "Ninja" `
+            "-DCMAKE_BUILD_TYPE=$Configuration" `
+            "-DCMAKE_TOOLCHAIN_FILE=$vcpkgToolchain" `
+            "-DVCPKG_TARGET_TRIPLET=$triplet" `
+            "-DVCPKG_OVERLAY_TRIPLETS=$tripletOverlay" `
+            "-DPAGMONET_WITH_NLOPT=ON"
         if ($LASTEXITCODE -ne 0) { throw "cmake configure failed ($LASTEXITCODE)." }
         & cmake --build $buildDir --config $Configuration
         if ($LASTEXITCODE -ne 0) { throw "cmake build failed ($LASTEXITCODE)." }

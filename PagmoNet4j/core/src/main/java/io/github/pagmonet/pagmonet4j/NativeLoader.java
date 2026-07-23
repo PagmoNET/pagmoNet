@@ -3,7 +3,6 @@ package io.github.pagmonet.pagmonet4j;
 import java.io.*;
 import java.net.URL;
 import java.nio.file.*;
-import java.util.UUID;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -84,11 +83,13 @@ final class NativeLoader {
         String wrapper = nativeFileName();
         String resourceDir = "natives/" + rid;
         try {
-            // Use a process-scoped UUID directory so concurrent JVM instances don't collide.
-            // Register a shutdown hook for deterministic cleanup even on System.exit() and
-            // kill signals (unlike deleteOnExit, which only fires on normal JVM termination).
-            String dirName = "pagmonet4j-native-" + ProcessHandle.current().pid() + "-" + UUID.randomUUID();
-            Path tmp = Files.createTempDirectory(dirName);
+            // Extract into a fresh temp directory. Files.createTempDirectory guarantees a unique
+            // path, so no extra UUID is needed; the pid prefix just makes the directory's owner
+            // obvious when several JVMs run concurrently. Register a shutdown hook for deterministic
+            // cleanup even on System.exit() and kill signals (unlike deleteOnExit, which only fires
+            // on normal JVM termination).
+            String dirPrefix = "pagmonet4j-native-" + ProcessHandle.current().pid() + "-";
+            Path tmp = Files.createTempDirectory(dirPrefix);
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 try {
                     Files.walk(tmp)

@@ -6,6 +6,8 @@ Add it **alongside** `pagmonet4j` (this artifact depends on the base — you get
 
 IPOPT is a gradient-based interior-point solver for large-scale nonlinear constrained optimization. It requires the problem to supply gradients (`has_gradient()` returns `true`).
 
+> **Working in C# / .NET?** The equivalent companion is **[Pagmo.NET.Ipopt](https://github.com/PagmoNET/pagmoNet)**.
+
 ## Requirements
 
 - JDK 17+
@@ -60,7 +62,7 @@ try (MyProblem prob = new MyProblem();
 | Option | Method | Description |
 |---|---|---|
 | `tol` | `set_numeric_option` | Convergence tolerance (default `1e-8`) |
-| `max_iter` | `set_integer_option_u64` | Maximum iterations |
+| `max_iter` | `set_integer_option` | Maximum iterations (use `set_integer_option_u64` for values above `int` range) |
 | `linear_solver` | `set_string_option` | `mumps` (default when available), `ma27`, `ma57`, `ma86`, `ma97` |
 | `hessian_approximation` | `set_string_option` | `exact` or `limited-memory` (L-BFGS) |
 

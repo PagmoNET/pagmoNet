@@ -8,6 +8,8 @@ parallel evolution support.
 
 The wrapper is built with [SWIG 4.4](https://www.swig.org/) and supports Windows x64, Linux x64, and macOS (arm64 + x86_64 universal binary).
 
+> **Using Java or Kotlin?** The same pagmo2 core is also wrapped as **[PagmoNet4j](https://github.com/PagmoNET/pagmoNet)** — the two APIs are kept deliberately close.
+
 ```
 dotnet add package Pagmo.NET --version 1.0.0
 ```
