@@ -22,14 +22,13 @@ The root `LICENSE` is MPL-2.0 and covers the shared original code. Per-package
 
 ### Base packages — MPL-2.0
 
-`Pagmo.NET` and `PagmoNet4j` are our original wrapper code (SWIG interface files,
+`Pagmo.NET` and `PagmoNet4j` are original wrapper code (SWIG interface files,
 hand-written C#/Java/Kotlin extensions, the native bridge, and CMake) licensed
 under the **Mozilla Public License 2.0**. MPL-2.0 is a file-level copyleft:
 modifications to MPL-covered files must stay MPL and be shared, but the files may
 be combined with code under other licenses.
 
-The base packages do **not** contain or link IPOPT. The IPOPT algorithm is
-present in the API but is inert unless the matching companion package (or a
+The base packages do **not** contain or link IPOPT. The API is aware of the IPOPT algorithm but is inert unless the matching companion package (or a
 system-provided IPOPT) is available at runtime.
 
 ### IPOPT companion packages — EPL-2.0

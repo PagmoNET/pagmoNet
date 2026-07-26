@@ -1,4 +1,4 @@
-# pagmoNet (shared layer)
+# pagmoNet
 
 SWIG interface files, shared C++ native bridge, and vcpkg ports for the [PagmoNet](https://github.com/PagmoNet) family of pagmo2 wrappers.
 
@@ -22,4 +22,9 @@ This is a monorepo. The shared `native/` + `swig/` layer feeds four sub-projects
 
 ## License
 
-MPL-2.0. See [LICENSE](LICENSE).
+The shared original code in this repository (`native/`, `swig/`, build scripts) is licensed
+**MPL-2.0** — see [LICENSE](LICENSE). The published packages carry their own licenses: **MPL-2.0**
+for the base bindings (`pagmo.NET`, `PagmoNet4j`) and **EPL-2.0** for the IPOPT companions
+(`pagmo.NET.ipopt`, `PagmoNet4j.ipopt`) — each has its own `LICENSE` file. See
+[LICENSING.md](LICENSING.md) for the authoritative per-component breakdown, including the
+statically-linked third-party libraries and their obligations.
