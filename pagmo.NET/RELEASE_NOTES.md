@@ -2,17 +2,43 @@
 
 ## v1.0.0
 
-First stable release.
+First stable release of the PagmoNet family — C# (`Pagmo.NET`) and Java/Kotlin (`PagmoNet4j`)
+bindings for [pagmo2](https://esa.github.io/pagmo2/), built from one shared SWIG + native layer.
 
 ### Highlights
 
-- **Release pipeline regenerates SWIG bindings**, so the published package is assembled the same way as the tested one (ship == test). A shared SWIG step is used by both the build and release workflows to prevent drift.
-- **Single-source version** via `Directory.Build.props` — one `<Version>` for the whole package instead of per-csproj tags.
-- Base `Pagmo.NET` includes the `ipopt` algorithm but links **no** IPOPT (it loads `libipopt` at runtime via `dlopen`), so the base stays MPL-2.0 and EPL-free. Add the `Pagmo.NET.Ipopt` companion package to supply a bundled `libipopt`, or bring your own via `PAGMONET_IPOPT_LIBRARY`. (NLopt is statically included.)
+- **Deferred-load IPOPT (MPL base, EPL companion).** The base packages contain the `ipopt`
+  algorithm but link **no** IPOPT — it loads `libipopt` at runtime via `dlopen`/`LoadLibrary`, so the
+  base stays **MPL-2.0** and EPL-free (NLopt is statically included under LGPL). Add the
+  `Pagmo.NET.Ipopt` / `pagmonet4j-ipopt` **EPL-2.0** companion to bundle a `libipopt` for every
+  platform, install one system-wide, or point `PAGMONET_IPOPT_LIBRARY` at your own. Without one,
+  `ipopt` degrades gracefully — check `OptionalSolverAvailability.IsIpoptAvailable` /
+  `isIpoptAvailable()`.
+- **Cross-language parity.** The C# and Java/Kotlin APIs are kept deliberately close (pagmo's
+  snake_case names are identical across both). Both expose **typed structured logs** for every
+  wrapped algorithm (`GetTypedLogLines()` / `getTypedLogLines()`), the managed problem/algorithm
+  (UDP/UDA) architecture, thread-safe and cloneable problems, archipelago migration policies, and a
+  `grid_search` demonstration UDA. A "Porting from Pagmo.NET" guide lists the handful of C#→Java
+  translate-time differences.
+- **Kotlin DSLs.** `pagmonet4j-kotlin` provides idiomatic Kotlin over islands, archipelagos,
+  problems, and algorithms, plus multi-objective utilities, hypervolume, and batch-fitness evaluation.
+- **Platforms.** Windows x64, Linux x64, and macOS (arm64 + x86_64 universal). Native runtimes are
+  bundled in every package — no separate installation on any supported platform.
+- **Reproducible release.** The release pipeline regenerates the SWIG bindings and rebuilds the
+  native layer the same way the build/test pipeline does (ship == test); a single version tag
+  publishes all five packages in lockstep at one single-sourced version.
+- **Licensing.** Base packages are MPL-2.0; the IPOPT companions are EPL-2.0. Each package ships the
+  verbatim texts of its statically-linked third-party components (pagmo2 / NLopt LGPL, GPL, Boost,
+  Intel TBB) plus a `RELINKING.md` describing the LGPL relink path. See `LICENSING.md`.
 
 ### Breaking / Behavior Notes
 
-No breaking API changes from beta.6.
+- **Archipelago topology validation.** Setting a connected topology whose vertex count exceeds the
+  archipelago's island count (e.g. `new ring(8)` on an archipelago that is not already 8 islands) now
+  throws a clear error immediately, instead of failing later inside `evolve()` with a cryptic
+  `cannot access the migrants of the island`. Set an empty topology on an empty archipelago and grow
+  it with `push_back`, or size the topology to match the existing islands.
+- No other breaking API changes from beta.6.
 
 ## v1.0.0-beta.6
 

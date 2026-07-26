@@ -129,7 +129,6 @@ For BFE (batch fitness evaluation), implement `has_batch_fitness()` + `batch_fit
 ## Known limitations (v1.0)
 
 - **Object lifecycle** — use try-with-resources (`try (var p = new problem(...))`) whenever possible. If you don't call `close()`, cleanup is finalizer-based and non-deterministic.
-- **Kotlin convenience DSLs** — the full Java API is available from Kotlin; the idiomatic Kotlin DSLs cover islands, archipelagos, problems, and algorithms, but dedicated convenience wrappers for BFE, hypervolume, and multi-objective utilities are not yet written (call the Java API directly for those).
 
 ## License
 
