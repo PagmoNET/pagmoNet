@@ -3,14 +3,26 @@
 Runnable examples that teach both how to use PagmoNet4j APIs and why optimization structures
 (islands, archipelagos, topology, policies) matter in practice.
 
+## Prerequisites
+
+- **JDK 21** — the examples build with a Java 21 toolchain (Gradle provisions it if missing). Run
+  Gradle itself on a JDK it supports (17–24); JDK 26 is newer than the bundled Gradle 9.0 supports.
+- **A GitHub `read:packages` token** — GitHub Packages requires authentication even for *public*
+  packages. Create a [personal access token](https://github.com/settings/tokens) (classic) with the
+  **`read:packages`** scope, then put it in your **global** `~/.gradle/gradle.properties` (create the
+  file if needed) so it lives outside the project and never gets committed:
+
+  ```properties
+  gpr.user=YOUR_GITHUB_USERNAME
+  gpr.token=YOUR_read_packages_PAT
+  ```
+
+  (Or set the `GITHUB_ACTOR` / `GITHUB_TOKEN` environment variables instead.)
+
 ## Run
 
 The examples resolve the **published** `pagmonet4j` packages from GitHub Packages — no native build
-required. GitHub Packages needs a token even for *public* packages, so there's a one-time step: put a
-`read:packages` PAT in `~/.gradle/gradle.properties` as `gpr.user` / `gpr.token` (see the
-[package README](../README.md#running-the-examples) for details).
-
-Then, from the repo root:
+required. Once the token above is in place, from the repo root:
 
 ```powershell
 .\gradlew :examples:run --args="all"

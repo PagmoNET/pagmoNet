@@ -59,7 +59,12 @@ int code = algo.GetLastOptimizationResultCode();
 
 ### Known limitations
 
-- SPRAL linear solver is not included in this build.
+- **Linear solver: MUMPS only (SPRAL / HSL not included).** This package bundles the prebuilt
+  **conda-forge `ipopt`** binary as-is, so its linear-solver set is conda-forge's build decision, not
+  ours: conda-forge builds IPOPT with the open-source **MUMPS** solver (the standard default) and
+  without SPRAL or the license-restricted HSL (MA27/MA57/…). MUMPS covers general nonlinear
+  constrained problems. If you specifically need SPRAL or HSL, build your own IPOPT with them and
+  point `PAGMONET_IPOPT_LIBRARY` at it.
 
 ## License
 

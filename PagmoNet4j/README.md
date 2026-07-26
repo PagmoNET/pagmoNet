@@ -1,5 +1,7 @@
 # PagmoNet4j
 
+![PagmoNet4j](logo_small.png)
+
 Java and Kotlin bindings for [pagmo2](https://github.com/esa/pagmo2), part of the [PagmoNet](https://github.com/PagmoNET) family.
 
 > **Working in C# / .NET?** The same pagmo2 core is also wrapped as **[Pagmo.NET](https://github.com/PagmoNET/pagmoNet)** — the two APIs are kept deliberately close.
@@ -23,6 +25,8 @@ dependencies {
     implementation("io.github.pagmonet:pagmonet4j-ipopt:1.0.0")
 }
 ```
+
+> **No separate native install**: the JAR carries the native library for Windows x64, Linux x64, and macOS (arm64 + x86_64 universal). Add the dependency and it runs — there is nothing else to install on any supported platform.
 
 > **GitHub Packages auth**: GitHub requires authentication even for public packages. Create a [personal access token](https://github.com/settings/tokens) with `read:packages` scope and store it as `gpr.token` in `~/.gradle/gradle.properties`, or set `GITHUB_TOKEN` in your environment.
 
@@ -124,11 +128,8 @@ For BFE (batch fitness evaluation), implement `has_batch_fitness()` + `batch_fit
 
 ## Known limitations (v1.0)
 
-- **Native bundling** — the published JAR bundles native libraries for Windows x64, Linux x64, and macOS (arm64 + x86_64 universal). No separate installation required on any supported platform.
 - **Object lifecycle** — use try-with-resources (`try (var p = new problem(...))`) whenever possible. If you don't call `close()`, cleanup is finalizer-based and non-deterministic.
-- **`free_form` topology** — dynamic edge add/remove is not yet exposed in Java.
-- **Gradient/hessian** — wrapped and tested for basic cases; sparse Hessian patterns have limited test coverage.
-- **Kotlin wrappers** — BFE, hypervolume, and multi-objective utilities are available via the Java API; Kotlin convenience wrappers are not yet complete.
+- **Kotlin convenience DSLs** — the full Java API is available from Kotlin; the idiomatic Kotlin DSLs cover islands, archipelagos, problems, and algorithms, but dedicated convenience wrappers for BFE, hypervolume, and multi-objective utilities are not yet written (call the Java API directly for those).
 
 ## License
 

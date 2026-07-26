@@ -17,6 +17,31 @@
 
 #include "tuple_adapters.h"
 #include "archipelago_swig.h"
+
+#include <stdexcept>
+#include <string>
+
+namespace pagmoNetWrap {
+// Guard against the pagmo archipelago invariant violation that otherwise surfaces, much later and
+// cryptically, as "cannot access the migrants of the island" during evolve(). pagmo grows the
+// migrants database one entry per island (via push_back) but grows the topology BOTH per push_back
+// AND on set_topology; it performs no validation (see pagmo archipelago.cpp set_topology). So a
+// pre-sized connected topology (e.g. ring(8)) set on an archipelago, followed by push_back, leaves
+// the topology with more vertices than islands, and migration then indexes past the migrants db.
+// Rejecting num_vertices > island-count up front turns that latent runtime crash into an immediate,
+// clear error. (num_vertices <= island-count is safe: unconnected/undersized topologies simply
+// leave some islands without migration edges.)
+inline void require_topology_fits(std::size_t num_vertices, std::size_t num_islands, const char *fn) {
+    if (num_vertices > num_islands) {
+        throw std::invalid_argument(
+            std::string(fn) + ": the topology has " + std::to_string(num_vertices)
+            + " vertices but the archipelago has " + std::to_string(num_islands)
+            + " island(s); a connected topology's vertex count must not exceed the island count. "
+              "Set an empty topology (e.g. new ring()) on an empty archipelago and push_back islands "
+              "so the topology grows with them, or size the topology to match the existing islands.");
+    }
+}
+}
 %}
 
 // Your pattern.
@@ -247,14 +272,17 @@
     }
 
     void set_topology_fully_connected(const pagmo::fully_connected &t) {
+        pagmoNetWrap::require_topology_fits(t.num_vertices(), self->size(), "set_topology_fully_connected");
         self->set_topology(pagmo::topology(t));
     }
 
     void set_topology_ring(const pagmo::ring &t) {
+        pagmoNetWrap::require_topology_fits(t.num_vertices(), self->size(), "set_topology_ring");
         self->set_topology(pagmo::topology(t));
     }
 
     void set_topology_free_form(const pagmo::free_form &t) {
+        pagmoNetWrap::require_topology_fits(t.num_vertices(), self->size(), "set_topology_free_form");
         self->set_topology(pagmo::topology(t));
     }
 

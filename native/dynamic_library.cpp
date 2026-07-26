@@ -24,8 +24,29 @@ namespace
 {
 
 #if defined(_WIN32)
-void *os_load(const char *name)
+bool win_is_absolute(const char *p)
 {
+    if (p == nullptr || *p == '\0') {
+        return false;
+    }
+    // Drive-absolute ("C:\..." / "C:/...").
+    if (((p[0] >= 'A' && p[0] <= 'Z') || (p[0] >= 'a' && p[0] <= 'z')) && p[1] == ':'
+        && (p[2] == '\\' || p[2] == '/')) {
+        return true;
+    }
+    // UNC or drive-rooted ("\\server\share", "\path").
+    return p[0] == '\\' || p[0] == '/';
+}
+// from_full_path: the caller is loading by an explicit absolute path (the PAGMONET_IPOPT_LIBRARY
+// override, or a candidate next to the wrapper) rather than a bare name for the OS search path.
+// For an absolute path we use LOAD_WITH_ALTERED_SEARCH_PATH so the DLL's OWN directory is searched
+// for ITS dependencies -- plain LoadLibraryA does not, so a bring-your-own libipopt.dll whose
+// OpenBLAS/gfortran siblings sit next to it would otherwise fail to load with no error surfaced.
+void *os_load(const char *name, bool from_full_path)
+{
+    if (from_full_path && win_is_absolute(name)) {
+        return reinterpret_cast<void *>(::LoadLibraryExA(name, nullptr, LOAD_WITH_ALTERED_SEARCH_PATH));
+    }
     return reinterpret_cast<void *>(::LoadLibraryA(name));
 }
 void *os_symbol(void *handle, const char *name)
@@ -37,7 +58,9 @@ void os_unload(void *handle)
     ::FreeLibrary(reinterpret_cast<HMODULE>(handle));
 }
 #else
-void *os_load(const char *name)
+// On Unix, RTLD resolution + each bundled library's own RPATH ($ORIGIN / @loader_path) already
+// resolve co-located dependencies, so the full-path hint is not needed.
+void *os_load(const char *name, bool /*from_full_path*/)
 {
     return ::dlopen(name, RTLD_NOW | RTLD_GLOBAL);
 }
@@ -120,7 +143,7 @@ dynamic_library::dynamic_library(const char *override_env_var, std::initializer_
     if (override_env_var != nullptr) {
         const std::string ov = read_env(override_env_var);
         if (!ov.empty()) {
-            m_handle = os_load(ov.c_str());
+            m_handle = os_load(ov.c_str(), /*from_full_path=*/true);
             if (m_handle != nullptr) {
                 m_loaded = ov;
                 return;
@@ -136,7 +159,7 @@ dynamic_library::dynamic_library(const char *override_env_var, std::initializer_
         if (!dir.empty()) {
             for (const char *name : candidate_names) {
                 const std::string full = dir + path_sep() + name;
-                m_handle = os_load(full.c_str());
+                m_handle = os_load(full.c_str(), /*from_full_path=*/true);
                 if (m_handle != nullptr) {
                     m_loaded = full;
                     return;
@@ -148,7 +171,7 @@ dynamic_library::dynamic_library(const char *override_env_var, std::initializer_
 
     // 3) Candidate names via the OS loader search path (system install / LD_LIBRARY_PATH / RPATH).
     for (const char *name : candidate_names) {
-        m_handle = os_load(name);
+        m_handle = os_load(name, /*from_full_path=*/false);
         if (m_handle != nullptr) {
             m_loaded = name;
             return;

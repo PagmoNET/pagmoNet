@@ -252,7 +252,7 @@ namespace Tests.Pagmo.NET
         public void MigrationAndTopologyControlsCanBeSet()
         {
             using var archi = new archipelago();
-            using var ringTopo = new ring(4, 0.7);
+            using var ringTopo = new ring();  // empty ring on an empty archipelago (counts match)
 
             archi.set_migration_type(MigrationType.Broadcast);
             archi.set_migrant_handling(MigrantHandling.Evict);
@@ -264,10 +264,28 @@ namespace Tests.Pagmo.NET
         }
 
         [Test]
-        public void PreconfiguredRingTopologyRemainsRuntimeSafeAfterIslandInsertion()
+        public void PresizedRingTopologyOnMismatchedArchipelagoIsRejected()
         {
+            // A ring pre-sized to 8 vertices, set on an archipelago that does not already have 8
+            // islands, would leave the topology with more vertices than islands. pagmo does not
+            // validate this, so it used to surface much later and cryptically as "cannot access the
+            // migrants of the island" during evolve(). The wrapper now rejects it up front.
             using var archi = new archipelago();
             using var ringTopo = new ring(8, 0.7);
+
+            var ex = Assert.Catch(() => archi.set_topology_ring(ringTopo));
+            Assert.That(ex.Message, Does.Contain("vertices").And.Contain("island"),
+                "A topology whose vertex count exceeds the island count must be rejected with a clear message.");
+        }
+
+        [Test]
+        public void RingTopologyGrowsWithIslandsAndEvolvesCleanly()
+        {
+            // The correct pattern: set an EMPTY ring on an empty archipelago, then push islands.
+            // The ring grows one vertex per island, so topology and island counts stay in sync and
+            // evolve/wait_check complete without the migrants-db error.
+            using var archi = new archipelago();
+            using var ringTopo = new ring();
             using var problem = new TwoDimensionalSingleObjectiveProblemWrapper();
 
             archi.set_topology_ring(ringTopo);
@@ -278,31 +296,9 @@ namespace Tests.Pagmo.NET
             }
 
             archi.evolve(1u);
-            ApplicationException ex = null;
-            try
-            {
-                archi.wait_check();
-            }
-            catch (ApplicationException caught)
-            {
-                // Historical note: this scenario has exhibited a timing-sensitive runtime failure
-                // ("cannot access the migrants of the island") in some thread interleavings.
-                // The branch below keeps this regression observable while allowing the known
-                // transient behavior to be diagnosed without masking successful executions.
-                ex = caught;
-            }
-
-            if (ex == null)
-            {
-                Assert.That(archi.status(), Is.EqualTo(EvolveStatus.Idle));
-                Assert.That(archi.get_topology_name(), Is.EqualTo("Ring"));
-                return;
-            }
-
-            Assert.That(
-                ex.Message,
-                Does.Contain("cannot access the migrants of the island"),
-                "If preconfigured ring insertion fails, it should fail with the known migrants-db sizing issue.");
+            Assert.DoesNotThrow(() => archi.wait_check());
+            Assert.That(archi.status(), Is.EqualTo(EvolveStatus.Idle));
+            Assert.That(archi.get_topology_name(), Is.EqualTo("Ring"));
         }
 
         [Test]
@@ -328,11 +324,19 @@ namespace Tests.Pagmo.NET
         public void MigrationAndFreeFormTopologyControlsCanBeSet()
         {
             using var archi = new archipelago();
+            using var problem = new TwoDimensionalSingleObjectiveProblemWrapper();
             using var topology = new free_form();
             topology.push_back();
             topology.push_back();
             topology.add_edge(0u, 1u, 0.6);
 
+            // The free-form topology has 2 vertices, so the archipelago must have 2 islands before
+            // it is set — the vertex count may not exceed the island count.
+            for (var i = 0; i < 2; i++)
+            {
+                using IAlgorithm algorithm = new de(10u, 0.8, 0.9, 2u, 1e-6, 1e-6, (uint)(50 + i));
+                archi.push_back_island(algorithm, problem, 16u, (uint)(60 + i));
+            }
             archi.set_topology_free_form(topology);
 
             Assert.That(archi.get_topology_name(), Is.EqualTo("Free form"));

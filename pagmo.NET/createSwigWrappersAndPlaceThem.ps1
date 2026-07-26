@@ -3,7 +3,13 @@ param(
     # Generate the IPOPT-enabled binding surface (adds -DPAGMO_WITH_IPOPT, which
     # emits ipopt.cs and the IPOPT P/Invokes). Used by the Pagmo.NET.Ipopt build;
     # the base Pagmo.NET build leaves this off.
-    [switch]$WithIpopt
+    [switch]$WithIpopt,
+
+    # Generate the SNOPT7 binding surface (adds -DPAGMO_WITH_SNOPT7, which emits
+    # snopt7.cs). SNOPT7 is not shipped (proprietary); this is for users compiling it in
+    # from source. It also requires pagmo_plugins_nonfree's snopt7.hpp on the include path
+    # and building the native wrapper with -DPAGMONET_WITH_SNOPT7=ON. See the README FAQ.
+    [switch]$WithSnopt7
 )
 
 $ErrorActionPreference = "Stop"
@@ -54,6 +60,7 @@ $swigArgs = @(
     "-oh", $wrapH
 )
 if ($WithIpopt) { $swigArgs += "-DPAGMO_WITH_IPOPT" }
+if ($WithSnopt7) { $swigArgs += "-DPAGMO_WITH_SNOPT7" }
 $swigArgs += @("-I$swigSrc", "-I$nativeSrc", (Join-Path $swigSrc "PagmoNETSwigInterface.i"))
 
 & $swigExe @swigArgs

@@ -35,6 +35,19 @@ class TopologyTest {
     }
 
     @Test
+    void presizedTopologyExceedingIslandCountIsRejected() {
+        // A ring pre-sized to 8 vertices, set on an archipelago that isn't already 8 islands, would
+        // leave the topology with more vertices than islands and later crash inside evolve() with
+        // "cannot access the migrants of the island". The wrapper rejects it up front instead.
+        try (ring topo = new ring(8L, 0.7); archipelago archi = new archipelago()) {
+            RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> archi.set_topology_ring(topo));
+            assertTrue(ex.getMessage().contains("vertices") && ex.getMessage().contains("island"),
+                "guard message should explain the vertex/island mismatch, got: " + ex.getMessage());
+        }
+    }
+
+    @Test
     void freeFormTopologyConstructsCorrectly() {
         free_form topo = new free_form();
         assertNotNull(topo.get_name());

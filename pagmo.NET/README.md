@@ -71,19 +71,28 @@ transparently so pagmo's native `thread_island` check passes. Problems returning
 ## FAQ
 
 **Where's SNOPT7?**
-SNOPT7 is proprietary and cannot be bundled. Users with a license can build from source:
-1. Obtain SNOPT7 headers and compiled shared library from Stanford University.
-2. Build pagmo2 with `-DPAGMO_WITH_SNOPT7=ON`.
-3. Add `#define PAGMO_WITH_SNOPT7` to `swig/pagmo/config.hpp`.
-4. Copy `pagmo/algorithms/snopt7.hpp` into `swig/pagmo/algorithms/`.
-5. Run `pwsh scripts/regen-swig.ps1` then `pwsh scripts/build-native.ps1`.
-6. Build `Pagmo.NET.csproj` — MSBuild detects the generated `snopt7.cs` automatically.
+SNOPT7 is proprietary, so it is **not shipped** and, because we have no license, the integration below
+is **completely untested by us** — treat it as best-effort. It is not a 1.0 feature; you compile it in
+yourself.
 
-At runtime, pagmo's `snopt7` loads the solver DLL dynamically:
+The good news: you do **not** need SNOPT's headers to build, and you do **not** rebuild pagmo2. The
+`snopt7` algorithm comes from [`pagmo_plugins_nonfree`](https://github.com/esa/pagmo_plugins_nonfree),
+which declares the SNOPT C interface itself and `dlopen`s your compiled SNOPT **solver library at
+runtime**. So all you need at build time is one header, plus two flags:
+
+1. Get `snopt7.hpp` (and its `bogus_functions.hpp`) from `pagmo_plugins_nonfree` and place them so the
+   build can resolve `#include "pagmo/algorithms/snopt7.hpp"` (e.g. under `swig/pagmo/algorithms/`).
+2. Regenerate the binding with SNOPT7 enabled:
+   `pwsh pagmo.NET/createSwigWrappersAndPlaceThem.ps1 -WithSnopt7` (emits `snopt7.cs`).
+3. Build the native wrapper with the `-DPAGMONET_WITH_SNOPT7=ON` CMake option (defines `PAGMO_WITH_SNOPT7`).
+4. Build `Pagmo.NET.csproj` — it auto-detects the generated `snopt7.cs`.
+
+Then at runtime, point it at your compiled SNOPT solver library:
 ```csharp
-using var solver = new snopt7(screenOutput: false, snopt7LibPath: "path/to/snopt7.dll", minorVersion: 6u);
+using var solver = new snopt7(screenOutput: false, snopt7LibPath: "path/to/snopt7.dll", minorVersion: 7u);
 ```
-Set `SNOPT7_LIB` to the DLL path to enable the live execution test.
+Set `SNOPT7_LIB` to that DLL path to enable the live execution test. (A future release will make SNOPT7
+a runtime deferred-load, like IPOPT, so no rebuild is needed — see the roadmap.)
 
 **Is this affiliated with ESA or the pagmo2 team?**
 No — Pagmo.NET is an independent .NET binding.
