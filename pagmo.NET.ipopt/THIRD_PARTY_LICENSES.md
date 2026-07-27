@@ -11,11 +11,11 @@ The exact set of bundled binaries varies per platform. For the permissive/notice
 texts are linked below. The GCC runtime libraries carry the more nuanced GPL-3.0 **with the
 GCC Runtime Library Exception**, so those two texts are reproduced verbatim here.
 
-The package also ships a **`licenses/`** directory next to the native binaries, assembled at build
-time from the exact conda-forge packages in this platform's runtime closure: `licenses/PACKAGES.txt`
-lists every bundled component with its version and SPDX id, and `licenses/<package>/` holds each
-component's own verbatim license text as shipped upstream (when the upstream package included one).
-That directory is the authoritative per-platform record; the table below is the stable summary.
+The package also ships a **`THIRD_PARTY_NATIVE_LICENSES.txt`** file next to the native binaries,
+assembled at build time from the exact conda-forge packages in this platform's runtime closure: it
+lists every bundled component with its version and SPDX id, each followed by that component's own
+verbatim license text as shipped upstream (when the upstream package included one). That file is the
+authoritative per-platform record; the table below is the stable summary.
 
 | Component | SPDX / License | Full text |
 |---|---|---|

@@ -155,7 +155,7 @@ internal static class Program
         // an unlucky draw; retrying with a different seed is cheap and reliable.
         double bestDv = double.PositiveInfinity;
         int bestIdx = -1;
-        double[] xBestArr = null;
+        double[]? xBestArr = null;
 
         for (uint attempt = 0; attempt < 3 && bestIdx < 0; attempt++)
         {
@@ -192,7 +192,7 @@ internal static class Program
             }
         }
 
-        if (bestIdx < 0)
+        if (bestIdx < 0 || xBestArr is null)
         {
             Console.WriteLine("  No feasible solution found after 3 attempts.");
             return;

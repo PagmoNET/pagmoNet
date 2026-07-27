@@ -95,13 +95,18 @@ function Copy-Lib([System.IO.FileInfo]$item) {
     Copy-Item $src (Join-Path $OutputDir $item.Name) -Force
 }
 
-# Best-effort: harvest each bundled conda package's own license text (info/licenses/*) plus an SPDX
-# manifest into $OutputDir/licenses/, so the EPL companion ships the exact per-platform verbatim texts
-# for its runtime closure (OpenBLAS BSD-3, MUMPS CeCILL-C, the GCC runtime, libipopt EPL, ...). The
-# conda prefix is derived by walking up from -SearchDir until a sibling conda-meta/ appears, so no
-# caller change is needed. This NEVER throws: a missing license must not fail a release, and the base
-# packages already carry the primary LGPL/GPL/EPL texts. The SPDX manifest (PACKAGES.txt) is reliable;
-# the verbatim-text copy depends on the conda package cache still being reachable on the build box.
+# Best-effort: harvest each bundled conda package's SPDX id and verbatim license text into a SINGLE
+# consolidated file, THIRD_PARTY_NATIVE_LICENSES.txt, at the root of $OutputDir, so the EPL companion
+# ships the exact per-platform texts for its runtime closure (OpenBLAS BSD-3, MUMPS CeCILL-C, the GCC
+# runtime, libipopt EPL, ...). The conda prefix is derived by walking up from -SearchDir until a
+# sibling conda-meta/ appears, so no caller change is needed.
+#
+# ONE file on purpose: .NET flattens everything under runtimes/<rid>/native/ to the app root on
+# `dotnet publish`, so a nested licenses/<pkg>/LICENSE tree collides (many files all named "LICENSE")
+# and breaks consumers with NETSDK1152. A single uniquely-named file cannot collide.
+#
+# NEVER throws: a missing license must not fail a release, and the base packages already carry the
+# primary LGPL/GPL/EPL texts.
 function Copy-CondaLicenses {
     try {
         $prefixes = [System.Collections.Generic.List[string]]::new()
@@ -117,20 +122,22 @@ function Copy-CondaLicenses {
             return
         }
 
-        $licRoot = Join-Path $OutputDir "licenses"
-        New-Item -ItemType Directory -Force -Path $licRoot | Out-Null
-        $manifest = [System.Collections.Generic.List[string]]::new()
-        $manifest.Add("Third-party components bundled in this IPOPT companion payload,")
-        $manifest.Add("harvested from the conda-forge runtime closure. Each line is: <package> <version> [SPDX].")
-        $manifest.Add("Verbatim license texts, when the upstream package shipped them, are under licenses/<package>/.")
-        $manifest.Add("")
+        $bar = ('=' * 80)
+        $out = [System.Collections.Generic.List[string]]::new()
+        $out.Add("Third-party components bundled in this IPOPT companion payload, harvested from the")
+        $out.Add("conda-forge runtime closure. For each component: name, version, SPDX id, and (where the")
+        $out.Add("upstream package shipped one) its verbatim license text.")
+        $out.Add("")
 
+        $withText = 0
         foreach ($prefix in $prefixes) {
             foreach ($meta in (Get-ChildItem (Join-Path $prefix "conda-meta") -Filter *.json -File -ErrorAction SilentlyContinue)) {
                 try { $j = Get-Content $meta.FullName -Raw | ConvertFrom-Json } catch { continue }
                 if (-not $j.name) { continue }
                 $spdx = if ($j.license) { $j.license } else { "see package" }
-                $manifest.Add(("{0} {1} [{2}]" -f $j.name, $j.version, $spdx))
+                $out.Add($bar)
+                $out.Add(("{0} {1}  [{2}]" -f $j.name, $j.version, $spdx))
+                $out.Add($bar)
 
                 # Locate the package's extracted info/licenses in the conda package cache (fields vary
                 # across conda/mamba versions -- try the known ones, then fall back to a tarball-derived dir).
@@ -140,17 +147,24 @@ function Copy-CondaLicenses {
                     $c = if (Test-Path $cand -PathType Container) { $cand } else { $cand -replace '\.(conda|tar\.bz2)$', '' }
                     if ($c -and (Test-Path (Join-Path $c "info/licenses"))) { $pkgDir = $c; break }
                 }
-                if ($pkgDir) {
-                    $dest = Join-Path $licRoot $j.name
-                    New-Item -ItemType Directory -Force -Path $dest | Out-Null
-                    Copy-Item (Join-Path $pkgDir "info/licenses/*") $dest -Recurse -Force -ErrorAction SilentlyContinue
+                $texts = if ($pkgDir) { Get-ChildItem (Join-Path $pkgDir "info/licenses") -Recurse -File -ErrorAction SilentlyContinue } else { @() }
+                if ($texts) {
+                    foreach ($f in $texts) {
+                        $out.Add("--- $($f.Name) ---")
+                        $out.Add((Get-Content $f.FullName -Raw))
+                        $out.Add("")
+                    }
+                    $withText++
+                } else {
+                    $out.Add("(no license file shipped in the package; see the SPDX id above)")
+                    $out.Add("")
                 }
             }
         }
 
-        Set-Content -Path (Join-Path $licRoot "PACKAGES.txt") -Value ($manifest -join "`n")
-        $copied = (Get-ChildItem $licRoot -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -ne 'PACKAGES.txt' } | Measure-Object).Count
-        Write-Host "Licenses: wrote $licRoot\PACKAGES.txt (SPDX manifest) + $copied verbatim license file(s)."
+        $dest = Join-Path $OutputDir "THIRD_PARTY_NATIVE_LICENSES.txt"
+        Set-Content -Path $dest -Value ($out -join "`n") -Encoding UTF8
+        Write-Host "Licenses: wrote $dest ($withText package(s) with verbatim text)."
     }
     catch {
         Write-Warning "Copy-CondaLicenses: best-effort license harvest failed ($($_.Exception.Message)); continuing (not a release blocker)."
